@@ -1,0 +1,6 @@
+#ifndef ZIGBEE_REQUESTS_
+#define ZIGBEE_REQUESTS_
+
+#define REQUEST_DEVICES	0x20
+
+#endif
