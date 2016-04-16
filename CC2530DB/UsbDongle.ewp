@@ -1117,12 +1117,6 @@
     <group>
       <name>usb</name>
       <file>
-        <name>$PROJ_DIR$\..\Source\DeviceList.c</name>
-      </file>
-      <file>
-        <name>$PROJ_DIR$\..\Source\DeviceList.h</name>
-      </file>
-      <file>
         <name>$PROJ_DIR$\..\Source\endpointRequestList.c</name>
       </file>
       <file>
@@ -1150,7 +1144,7 @@
         <name>$PROJ_DIR$\..\Source\UsbFunctions.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\Source\USbFunctions.h</name>
+        <name>$PROJ_DIR$\..\Source\UsbFunctions.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\Source\UsbMessageHandlers.c</name>

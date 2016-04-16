@@ -9,13 +9,18 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=-321590735
+Checksum=917920953
 [CallStack]
 ShowArgs=0
 [Disassembly]
 MixedMode=1
 [BreakpointUsageDialog]
 Placement=_ 738 320 1183 602
+[Breakpoints]
+Count=0
+[ChipconEmu]
+Stop timers on halt=0
+Leave target running=1
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
@@ -23,11 +28,6 @@ Category=_ 0
 [TermIOLog]
 LoggingEnabled=_ 0
 LogFile=_ ""
-[Breakpoints]
-Count=0
-[ChipconEmu]
-Stop timers on halt=0
-Leave target running=1
 [Aliases]
 Count=0
 SuppressDialog=0

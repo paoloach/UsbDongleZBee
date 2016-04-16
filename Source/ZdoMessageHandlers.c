@@ -10,7 +10,6 @@
 #include "ZdoMessageHandlers.h"
 #include "UsbFunctions.h"
 #include "hal_board.h"
-#include "DeviceList.h"
 #include "endpointRequestList.h"
 
 /*********************************************************************
@@ -59,7 +58,6 @@ static void notHandledMessage(zdoIncomingMsg_t * msg) {
 static void annunceMessage(zdoIncomingMsg_t * msg) {
 	ZDO_ParseDeviceAnnce( msg, &device );
 	usbSendAnnunce(&device);
-	deviceListAdd(&device);
 }
 
 

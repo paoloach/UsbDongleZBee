@@ -17,7 +17,6 @@
 #include "usb_interrupt.h"
 #include "usb_suspend.h"
 #include "zcl.h"
-#include "DeviceList.h"
 
 #include "UsbMessageHandlers.h"
 #include "hal_usbdongle_cfg.h"
@@ -141,8 +140,9 @@ static uint16 * src;
 static uint8 len;
 static struct SimpleDescrMsg * simpleDescrMsg;
 static struct ReadAttributeResponseMsg * readAttributeResponseMsg;
-static struct DeviceList * currentDeviceElement=NULL;
+static int  currentDeviceElement=0;
 static struct BindResponse bindResponse;
+static AddrMgrEntry_t addrMgrEntry;
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -290,7 +290,7 @@ UsbMessageHandler parseDataOut(void) {
 	case WRITE_ATTRIBUTE_VALUE:
 		return usbWriteAttributeValue;
 	case REQ_ALL_NODES:
-		currentDeviceElement=  deviceListHead();
+		currentDeviceElement=  0;
 		return requestAllDevices;
 	case REQ_BIND_TABLE:
 		return usbReqBindTable;
@@ -371,16 +371,29 @@ void usbSendAttributeResponseMsg(zclReadRspStatus_t * readResponse, uint16 clust
 
 
 void requestAllDevices(uint8 * notUsed){
-	if (currentDeviceElement != NULL){
-		annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
-		annunceDataMsg.nwkAddr = currentDeviceElement->device.nwkAddr;
-		osal_memcpy(annunceDataMsg.extAddr, currentDeviceElement->device.extAddr, Z_EXTADDR_LEN);
-		annunceDataMsg.capabilities = currentDeviceElement->device.capabilities;
-		sendUsb((uint8 *)&annunceDataMsg, sizeof(annunceDataMsg));
-		currentDeviceElement = currentDeviceElement->next;
-		if (currentDeviceElement != NULL){
-			osal_start_timerEx( zusbTaskId, USB_ANNUNCE_MSG, ANNUNCE_SEND_TIMEOUT );
+	if (currentDeviceElement < NWK_MAX_ADDRESSES){
+		while(1){
+			addrMgrEntry.index=currentDeviceElement;
+			addrMgrEntry.user=ADDRMGR_USER_DEFAULT;
+			currentDeviceElement++;
+			if (AddrMgrEntryGet(&addrMgrEntry)==TRUE){
+				annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
+				annunceDataMsg.nwkAddr = addrMgrEntry.nwkAddr;
+				osal_memcpy(annunceDataMsg.extAddr, addrMgrEntry.extAddr, Z_EXTADDR_LEN);
+				annunceDataMsg.capabilities = 0;
+				sendUsb((uint8 *)&annunceDataMsg, sizeof(annunceDataMsg));
+				osal_start_timerEx( zusbTaskId, USB_ANNUNCE_MSG, ANNUNCE_SEND_TIMEOUT );
+			} else{
+				if (currentDeviceElement >=NWK_MAX_ADDRESSES){
+					currentDeviceElement=0;
+					osal_stop_timerEx(zusbTaskId, USB_ANNUNCE_MSG);
+					return;
+				}
+			}
 		}
+	} else {
+		osal_stop_timerEx(zusbTaskId, USB_ANNUNCE_MSG);
+		currentDeviceElement =0;
 	}
 }
 
