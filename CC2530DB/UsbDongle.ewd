@@ -37,7 +37,7 @@
         </option>
         <option>
           <name>MemOverride</name>
-          <state>1</state>
+          <state>0</state>
         </option>
         <option>
           <name>OCProcessor</name>
@@ -117,7 +117,7 @@
         </option>
         <option>
           <name>DdfFile master</name>
-          <state>$TOOLKIT_DIR$\config\devices\Texas Instruments\ioCC2530F256.ddf</state>
+          <state>$TOOLKIT_DIR$\config\devices\_generic\io8052.ddf</state>
         </option>
         <option>
           <name>OCImagesOffset1</name>
@@ -219,7 +219,7 @@
         </option>
         <option>
           <name>ChipconStackOverflow</name>
-          <state>1</state>
+          <state>0</state>
         </option>
         <option>
           <name>ChipconNoBanks</name>

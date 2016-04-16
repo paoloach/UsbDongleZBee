@@ -288,12 +288,12 @@
           <name>CCDefines</name>
           <state>SECURE=0</state>
           <state>REFLECTOR</state>
-          <state>POWER_SAVE</state>
+          <state>xPOWER_SAVE</state>
           <state>HAL_KEY=0</state>
           <state>TC_LINKKEY_JOIN</state>
           <state>REFLECTOR</state>
-          <state>xNV_INIT</state>
-          <state>xNV_RESTORE</state>
+          <state>NV_INIT</state>
+          <state>NV_RESTORE</state>
           <state>xHOLD_AUTO_START</state>
           <state>xZTOOL_P1</state>
           <state>xMT_TASK</state>

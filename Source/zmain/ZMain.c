@@ -183,20 +183,15 @@ static void zmain_ext_addr(void)
       (SUCCESS != osal_nv_read(ZCD_NV_EXTADDR, 0, Z_EXTADDR_LEN, aExtendedAddress)) ||
       (osal_memcmp(aExtendedAddress, nullAddr, Z_EXTADDR_LEN)))
   {
-    // Attempt to read the extended address from the location on the lock bits page
-    // where the programming tools know to reserve it.
+    // Attempt to read the extended address from the location on the lock bits page where the programming tools know to reserve it.
     HalFlashRead(HAL_FLASH_IEEE_PAGE, HAL_FLASH_IEEE_OSET, aExtendedAddress, Z_EXTADDR_LEN);
 
-    if (osal_memcmp(aExtendedAddress, nullAddr, Z_EXTADDR_LEN))
-    {
+    if (osal_memcmp(aExtendedAddress, nullAddr, Z_EXTADDR_LEN)) {
       // Attempt to read the extended address from the designated location in the Info Page.
-      if (!osal_memcmp((uint8 *)(P_INFOPAGE+HAL_INFOP_IEEE_OSET), nullAddr, Z_EXTADDR_LEN))
-      {
+      if (!osal_memcmp((uint8 *)(P_INFOPAGE+HAL_INFOP_IEEE_OSET), nullAddr, Z_EXTADDR_LEN)){
         osal_memcpy(aExtendedAddress, (uint8 *)(P_INFOPAGE+HAL_INFOP_IEEE_OSET), Z_EXTADDR_LEN);
-      }
-      else  // No valid extended address was found.
-      {
-        uint8 idx;
+      } else{  // No valid extended address was found.
+          uint8 idx;
         
 #if !defined ( NV_RESTORE )
         writeNV = FALSE;  // Make this a temporary IEEE address
@@ -225,8 +220,7 @@ static void zmain_ext_addr(void)
       }
     }
 
-    if (writeNV)
-    {
+    if (writeNV){
       (void)osal_nv_write(ZCD_NV_EXTADDR, 0, Z_EXTADDR_LEN, aExtendedAddress);
     }
   }

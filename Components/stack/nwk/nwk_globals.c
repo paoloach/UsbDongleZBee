@@ -459,8 +459,7 @@ void NIB_init()
 #endif
 
 #if defined ( NV_RESTORE )
-  if ( osal_nv_read( ZCD_NV_NWKMGR_ADDR, 0, sizeof( _NIB.nwkManagerAddr ),
-                     &_NIB.nwkManagerAddr ) != SUCCESS )
+  if ( osal_nv_read( ZCD_NV_NWKMGR_ADDR, 0, sizeof( _NIB.nwkManagerAddr ), &_NIB.nwkManagerAddr ) != SUCCESS )
 #endif
   {
     _NIB.nwkManagerAddr = 0x0000;

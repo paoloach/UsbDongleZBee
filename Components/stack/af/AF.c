@@ -41,6 +41,7 @@
  * INCLUDES
  */
 
+#include "hal_board_cfg.h"
 #include "OSAL.h"
 #include "AF.h"
 #include "nwk_globals.h"

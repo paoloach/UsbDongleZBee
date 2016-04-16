@@ -260,6 +260,17 @@ void usbAddBindTable(uint8 * dat){
 * @return       void
 */
 void usbRemoveBindTable(uint8 * dat){
+	zAddrType_t inCluster;
+	bindRequest = (struct BindRequest *)dat;
+	
+	inCluster.addrMode = Addr64Bit;
+	osal_cpyExtAddr(inCluster.addr.extAddr, bindRequest->inClusterAddr);
+	
+	destAddr.addrMode = Addr16Bit;
+	destAddr.addr.shortAddr = bindRequest->destAddr;
+	
+	result = ZDP_UnbindReq(&destAddr,  bindRequest->outClusterAddr, bindRequest->outClusterEP, bindRequest->clusterID, &inCluster,  bindRequest->inClusterEP, 0);
+
 }
 
 /***********************************************************************************

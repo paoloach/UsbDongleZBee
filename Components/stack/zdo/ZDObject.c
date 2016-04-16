@@ -988,18 +988,6 @@ void ZDO_ProcessBindUnbindReq( zdoIncomingMsg_t *inMsg, ZDO_BindUnbindReq_t *pRe
   SourceAddr.addrMode = Addr64Bit;
   osal_cpyExtAddr( SourceAddr.addr.extAddr, pReq->srcAddress );
 
-  // If the local device is not the primary binding cache
-  // check the src address of the bind request.
-  // If it is not the local device's extended address
-  // discard the request.
-  if ( !osal_ExtAddrEqual( SourceAddr.addr.extAddr, NLME_GetExtAddr()) ||
-        (pReq->dstAddress.addrMode != Addr64Bit &&
-         pReq->dstAddress.addrMode != AddrGroup) )
-  {
-    bindStat = ZDP_NOT_SUPPORTED;
-  }
-  else
-  {
     // Check source & destination endpoints
     if ( (pReq->srcEndpoint == 0 || pReq->srcEndpoint > MAX_ENDPOINTS)
         || (( pReq->dstAddress.addrMode == Addr64Bit ) &&
@@ -1102,7 +1090,7 @@ void ZDO_ProcessBindUnbindReq( zdoIncomingMsg_t *inMsg, ZDO_BindUnbindReq_t *pRe
           bindStat = ZDP_NO_ENTRY;
       }
     }
-  }
+
 
   // Send back a response message
   ZDP_SendData( &(inMsg->TransSeq), &(inMsg->srcAddr),
