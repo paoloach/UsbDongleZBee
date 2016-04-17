@@ -301,7 +301,7 @@
       <file>$PROJ_DIR$\..\Source\UsbFifoData.h</file>
       <file>$PROJ_DIR$\..\Source\ZdoMessageHandlers.c</file>
       <file>$PROJ_DIR$\..\Source\UsbMessageHandlers.c</file>
-      <file>$PROJ_DIR$\..\Source\UsbFunctions.h</file>
+      <file>$PROJ_DIR$\..\Source\USbFunctions.h</file>
       <file>$PROJ_DIR$\CoordinatorEB\List\nwk_globals.lst</file>
       <file>$PROJ_DIR$\..\Components\mt\MT_SYS.h</file>
       <file>$PROJ_DIR$\..\Components\mt\MT_RPC.h</file>
@@ -777,6 +777,10 @@
         <tool>
           <name>ICC8051</name>
           <file> 523 521 525 430 428 497 220 401 392 63 513 515 374 484 64 62 447 499 486 485 504 427 389 446 66 449 496 509 529 150 153</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 430 428 497 220 401 392 63 513 515 374 484 64 62 447 499 486 485 504 427 389 446 66 449 496 509 529 150 153</file>
         </tool>
       </inputs>
     </file>
