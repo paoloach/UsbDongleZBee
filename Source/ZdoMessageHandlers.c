@@ -10,6 +10,7 @@
 #include "ZdoMessageHandlers.h"
 #include "UsbFunctions.h"
 #include "hal_board.h"
+#include "hal_types.h"
 #include "endpointRequestList.h"
 
 /*********************************************************************
@@ -80,12 +81,16 @@ static void simpleDecriptorMessage(zdoIncomingMsg_t * msg) {
 static void mgmtBindResponseMessage(zdoIncomingMsg_t * msg) {
 	ZDO_MgmtBindRsp_t * response = ZDO_ParseMgmtBindRsp(msg);
 	if (response != NULL){
+		uint16 dataSize = sizeof(ZDO_MgmtBindRsp_t) + response->bindingListCount*sizeof(apsBindingItem_t);
+				
 		if (response->status == ZSuccess){
-			usbSendBindTables(response->list, response->bindingListCount);
-		}
-		if (response->startIndex+response->bindingListCount < response->bindingCount){
-			uint8 startIndex=response->startIndex+response->bindingListCount;
-			ZDP_MgmtBindReq( &(msg->srcAddr), startIndex, 0 );
+			uint8 * data = (uint8 *)response;
+			while (dataSize > (BULK_SIZE_IN-1)){
+				usbSendDataChunk(BIND_TABLE, (uint8 *)&data, (BULK_SIZE_IN-1));
+				data += (BULK_SIZE_IN-1);
+				dataSize -= (BULK_SIZE_IN-1);
+			}
+			usbSendDataChunk(BIND_TABLE, (uint8 *)&data, dataSize);
 		}
 		osal_mem_free(response);
 	}
