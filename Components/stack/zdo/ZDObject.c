@@ -3078,65 +3078,56 @@ ZDO_MgmtRtgRsp_t *ZDO_ParseMgmtRtgRsp( zdoIncomingMsg_t *inMsg )
  *          This structure was allocated using osal_mem_alloc, so it must be freed
  *          by the calling function [osal_mem_free()].
  */
-ZDO_MgmtBindRsp_t *ZDO_ParseMgmtBindRsp( zdoIncomingMsg_t *inMsg )
-{
-  ZDO_MgmtBindRsp_t *pRsp;
-  uint8 status;
-  uint8 bindingCount = 0;
-  uint8 startIndex = 0;
-  uint8 bindingListCount = 0;
-  uint8 *msg;
+ZDO_MgmtBindRsp_t *ZDO_ParseMgmtBindRsp( zdoIncomingMsg_t *inMsg ){
+	ZDO_MgmtBindRsp_t *pRsp;
+	uint8 status;
+	uint8 bindingCount = 0;
+	uint8 startIndex = 0;
+	uint8 bindingListCount = 0;
+	uint8 *msg;
 
-  msg = inMsg->asdu;
+	msg = inMsg->asdu;
 
-  status = *msg++;
-  if ( status == ZSuccess )
-  {
-    bindingCount = *msg++;
-    startIndex = *msg++;
-    bindingListCount = *msg++;
-  }
+	status = *msg++;
+	if ( status == ZSuccess ){
+		bindingCount = *msg++;
+		startIndex = *msg++;
+		bindingListCount = *msg++;
+	}
 
   // Allocate a buffer big enough to handle the list
-  pRsp = (ZDO_MgmtBindRsp_t *)osal_mem_alloc(
-          (sizeof ( ZDO_MgmtBindRsp_t ) + (bindingListCount * sizeof( apsBindingItem_t ))) );
-  if ( pRsp )
-  {
-    uint8 x;
-    apsBindingItem_t *pList = pRsp->list;
-    pRsp->status = status;
-    pRsp->bindingCount = bindingCount;
-    pRsp->startIndex = startIndex;
-    pRsp->bindingListCount = bindingListCount;
+	pRsp = (ZDO_MgmtBindRsp_t *)osal_mem_alloc((sizeof ( ZDO_MgmtBindRsp_t ) + (bindingListCount * sizeof( apsBindingItem_t ))) );
+ 	if ( pRsp ) {
+		uint8 x;
+		apsBindingItem_t *pList = pRsp->list;
+		pRsp->status = status;
+		pRsp->bindingCount = bindingCount;
+		pRsp->startIndex = startIndex;
+		pRsp->bindingListCount = bindingListCount;
 
-    for ( x = 0; x < bindingListCount; x++ )
-    {
-      osal_cpyExtAddr( pList->srcAddr, msg );
-      msg += Z_EXTADDR_LEN;
-      pList->srcEP = *msg++;
+		for ( x = 0; x < bindingListCount; x++ ){
+			osal_cpyExtAddr( pList->srcAddr, msg );
+			msg += Z_EXTADDR_LEN;
+			pList->srcEP = *msg++;
 
-      // Get the Cluster ID
+			// Get the Cluster ID
 
-      pList->clusterID = BUILD_UINT16( msg[0], msg[1] );
-      msg += 2;
-      pList->dstAddr.addrMode = *msg++;
-      if ( pList->dstAddr.addrMode == Addr64Bit )
-      {
-        osal_cpyExtAddr( pList->dstAddr.addr.extAddr, msg );
-        msg += Z_EXTADDR_LEN;
-        pList->dstEP = *msg++;
-      }
-      else
-      {
-        pList->dstAddr.addr.shortAddr = BUILD_UINT16( msg[0], msg[1] );
-        msg += 2;
-      }
+			pList->clusterID = BUILD_UINT16( msg[0], msg[1] );
+			msg += 2;
+			pList->dstAddr.addrMode = *msg++;
+			if ( pList->dstAddr.addrMode == Addr64Bit ) {
+				osal_cpyExtAddr( pList->dstAddr.addr.extAddr, msg );
+				msg += Z_EXTADDR_LEN;
+				pList->dstEP = *msg++;
+			} else {
+				pList->dstAddr.addr.shortAddr = BUILD_UINT16( msg[0], msg[1] );
+				msg += 2;
+			}
+			pList++;
+		}
+	}
 
-      pList++;
-    }
-  }
-
-  return ( pRsp );
+  	return ( pRsp );
 }
 
 /*********************************************************************
