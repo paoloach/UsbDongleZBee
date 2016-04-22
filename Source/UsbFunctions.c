@@ -45,8 +45,7 @@
 #define REQ_ADD_BIND_TABLE_ENTRY 0x0E
 #define REQ_REMOVE_BIND_TABLE_ENTRY 0x0F
 
-#define BULK_SIZE_OUT 32
-#define BULK_SIZE_IN 64
+
 #define FIFO_SIZE    5
 #define MAX_CLUSTERS 20
 #define MAX_DATA_SIZE 40
@@ -128,8 +127,9 @@ typedef void (*UsbMessageHandler)(uint8 * data);
 /*********************************************************************
  * LOCAL VARIABLES
  */
+#define MAX_DATE_SIZE_2	64
+#define MAX_DATA_SIZE_3 128
 static uint8 * tmpData;
-static uint8 tmpDataLen;
 struct AnnunceDataMsg annunceDataMsg;
 static uint8 oldEndpoint;
 static uint8 length;
@@ -143,6 +143,7 @@ static struct ReadAttributeResponseMsg * readAttributeResponseMsg;
 static int  currentDeviceElement=0;
 static struct BindResponse bindResponse;
 static AddrMgrEntry_t addrMgrEntry;
+static struct UsbFifoData * usbFifoHead;
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -196,22 +197,49 @@ void Usb_ProcessLoop(void) {
 * @return       none
 */
 static void sendFifo(void) {
-	struct UsbFifoData * usbFifoHead = getUsbFifoHead();
+	usbFifoHead = getUsbFifoHead();
 	if (usbFifoHead != NULL && USBFW_IN_ENDPOINT_DISARMED()){
 		oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-		USBFW_SELECT_ENDPOINT(2);
+		USBFW_SELECT_ENDPOINT(3);
 
 		tmpData =    usbFifoHead->data;
-		tmpDataLen = usbFifoHead->dataLen;
+		len = usbFifoHead->dataLen;
+		if (len > MAX_DATE_SIZE_3){
+			len = MAX_DATE_SIZE_3;
+		}
 		do {
-       		USBF2 = *tmpData;
+       		USBF3 = *tmpData;
 			tmpData++;
-			tmpDataLen--;
-   		} while (tmpDataLen>0);
+			len--;
+   		} while (len>0);
    		USBFW_ARM_IN_ENDPOINT();
 		usbFifoPop();
  		USBFW_SELECT_ENDPOINT(oldEndpoint);	
 	}
+}
+
+/**
+* send a chunk of data to the host at endpoint 2
+*/
+void sendUsb(const uint8 * data, uint8 len) {
+	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(3);
+
+	// If the IN endpoint is ready to accept data.
+	if (len > MAX_DATE_SIZE_3){
+		len = MAX_DATE_SIZE_3;
+	}
+	if (USBFW_IN_ENDPOINT_DISARMED()) {
+		do {
+        	USBF3 = *data;
+			data++;
+			len--;
+      	} while (len>0);
+      	USBFW_ARM_IN_ENDPOINT();
+	} else {
+		usbFifoDataPush(data, len);
+	}
+ 	USBFW_SELECT_ENDPOINT(oldEndpoint);
 }
 
 /***********************************************************************************
@@ -244,27 +272,6 @@ static bool usbOutProcess(void){
     USBFW_SELECT_ENDPOINT(oldEndpoint);
     HAL_ENABLE_INTERRUPTS();
 	return result;
-}
-
-/**
-* send a chunk of data to the host at endpoint 2
-*/
-void sendUsb(const uint8 * data, uint8 len) {
-	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-	USBFW_SELECT_ENDPOINT(3);
-
-	// If the IN endpoint is ready to accept data.
-	if (USBFW_IN_ENDPOINT_DISARMED()) {
-		do {
-        	USBF3 = *data;
-			data++;
-			len--;
-      	} while (len>0);
-      	USBFW_ARM_IN_ENDPOINT();
-	} else {
-		usbFifoDataPush(data, len);
-	}
- 	USBFW_SELECT_ENDPOINT(oldEndpoint);
 }
 
 /***********************************************************************************

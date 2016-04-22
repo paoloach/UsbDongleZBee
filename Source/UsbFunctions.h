@@ -13,15 +13,10 @@
 #include "ZDObject.h"
 #include "zcl.h"
 
-/*********************************************************************
- * TYPES
- */
-
-/*********************************************************************
- * FUNCTIONS
- */
-
-
+#define BULK_SIZE_OUT 64
+#define BULK_SIZE_IN 128
+#define MAX_DATE_SIZE_3 128
+#define MAX_DATE_SIZE_2 64
 
 void Usb_ProcessLoop(void);
 void usbSendAnnunce(ZDO_DeviceAnnce_t * device);
