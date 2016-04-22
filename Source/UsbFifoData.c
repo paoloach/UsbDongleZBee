@@ -20,6 +20,25 @@ struct UsbFifoData * getUsbFifoHead(void) {
 	return head;
 }
 
+void usbFifoDataPushWithType(uint8 type,const uint8 * data, uint8 len) {
+	struct UsbFifoData * element = osal_mem_alloc(sizeof(struct UsbFifoData) + len+1);
+	if (element == NULL){
+		return;
+	}
+	
+	element->dataLen = len+1;
+	element->next = NULL;
+	element->data[0] = type;
+	osal_memcpy(&element->data[1], data, len);
+	if (last == NULL){
+		head = element;
+		last = element;
+	} else {
+		last->next = element;
+		last = element;
+	}
+}
+
 void usbFifoDataPush(const uint8 * data, uint8 len) {
 	struct UsbFifoData * element = osal_mem_alloc(sizeof(struct UsbFifoData) + len);
 	if (element == NULL){

@@ -28,22 +28,7 @@
 /*********************************************************************
  * LOCAL CONSTANTS
  */
-#define Z_EXTADDR_LEN   8
-#define ANNUNCE 0x01
-#define REQ_SIMPLE_DESC 0x02
-#define SIMPLE_DESC 0x03
-#define REQ_ACTIVE_EP 0x04
-#define ACTIVE_EP 0x05
-#define REQ_ATTRIBUTE_VALUES 0x06
-#define ATTRIBUTE_VALUES 0x07
-#define SEND_CMD 0x08
-#define WRITE_ATTRIBUTE_VALUE 0x09
-#define REQ_ALL_NODES 0x0A
-#define ALL_NODES 0x0B
-#define REQ_BIND_TABLE 0x0C
-#define BIND_TABLE 0x0D
-#define REQ_ADD_BIND_TABLE_ENTRY 0x0E
-#define REQ_REMOVE_BIND_TABLE_ENTRY 0x0F
+
 
 
 #define FIFO_SIZE    5
@@ -127,8 +112,6 @@ typedef void (*UsbMessageHandler)(uint8 * data);
 /*********************************************************************
  * LOCAL VARIABLES
  */
-#define MAX_DATE_SIZE_2	64
-#define MAX_DATA_SIZE_3 128
 static uint8 * tmpData;
 struct AnnunceDataMsg annunceDataMsg;
 static uint8 oldEndpoint;
@@ -240,6 +223,28 @@ void sendUsb(const uint8 * data, uint8 len) {
 		usbFifoDataPush(data, len);
 	}
  	USBFW_SELECT_ENDPOINT(oldEndpoint);
+}
+
+void usbSendDataChunk( uint8 type, uint8 * data, uint8 len){
+	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(3);
+	if (len > (MAX_DATE_SIZE_3-1)){
+		len = (MAX_DATE_SIZE_3-1);
+	}
+	
+	if (USBFW_IN_ENDPOINT_DISARMED()) {
+		USBF3 = type;
+		do {
+        	USBF3 = *data;
+			data++;
+			len--;
+      	} while (len>0);
+      	USBFW_ARM_IN_ENDPOINT();
+	} else {
+		usbFifoDataPushWithType(type, data, len);
+	}
+	
+	USBFW_SELECT_ENDPOINT(oldEndpoint);
 }
 
 /***********************************************************************************
@@ -404,16 +409,3 @@ void requestAllDevices(uint8 * notUsed){
 	}
 }
 
-void usbSendBindTables( apsBindingItem_t list[], uint8 bindingListCount){
-	apsBindingItem_t * iter = list;
-	apsBindingItem_t * end = list+bindingListCount;
-	for (; iter < end; iter++){
-		bindResponse.generticDataMsg.msgCode = BIND_TABLE;
-		bindResponse.clusterID = iter->clusterID;
-		bindResponse.dstAddr = iter->dstAddr;
-		bindResponse.dstEP = iter->dstEP;
-		osal_memcpy(&(bindResponse.srcAddr), &(iter->srcAddr), Z_EXTADDR_LEN);
-		bindResponse.srcEP = iter->srcEP;
-		sendUsb((const uint8 *)&bindResponse, sizeof(struct BindResponse));
-	}
-}
