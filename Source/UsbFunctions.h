@@ -58,6 +58,7 @@ void usbSendAnnunce(ZDO_DeviceAnnce_t * device);
 void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc);
 void usbSendAttributeResponseMsg(zclReadRspStatus_t *pInMsg, uint16 cluster, afAddrType_t * address );
 void sendUsb(const uint8 * data, uint8 len);
+void sendFifo(void);
 void usbSendDataChunk( uint8 type, uint8 * data, uint8 len);
 
 

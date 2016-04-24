@@ -78,6 +78,7 @@ struct ReadAttributeResponseMsg {
  * MACROS
  */
 #define ANNUNCE_SEND_TIMEOUT   100     // Every 100 ms
+#define SEND_FIFO_DATA_TIME   100     // Every 100 ms
 
 /*********************************************************************
  * LOCAL TYPEDEFS
@@ -109,7 +110,6 @@ static struct UsbFifoData * usbFifoHead;
  */
 static bool usbOutProcess(void);
 static UsbMessageHandler parseDataOut(void);
-static void sendFifo(void);
 
 /*********************************************************************
  * PUBLIC FUNCTIONS
@@ -143,8 +143,6 @@ void Usb_ProcessLoop(void) {
 	if (usbOutProcess()){
 		parseDataOut()(rxData);
 	}
-	
-	sendFifo();
 }
 
 /***********************************************************************************
@@ -154,7 +152,7 @@ void Usb_ProcessLoop(void) {
 *
 * @return       none
 */
-static void sendFifo(void) {
+void sendFifo(void) {
 	usbFifoHead = getUsbFifoHead();
 	if (usbFifoHead != NULL && USBFW_IN_ENDPOINT_DISARMED()){
 		oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
@@ -174,6 +172,10 @@ static void sendFifo(void) {
 		usbFifoPop();
  		USBFW_SELECT_ENDPOINT(oldEndpoint);	
 	}
+	if (getUsbFifoHead() != NULL){
+		osal_start_timerEx( zusbTaskId, SEND_FIFO_DATA, SEND_FIFO_DATA_TIME );
+	}
+	
 }
 
 /**
@@ -196,6 +198,7 @@ void sendUsb(const uint8 * data, uint8 len) {
       	USBFW_ARM_IN_ENDPOINT();
 	} else {
 		usbFifoDataPush(data, len);
+		osal_start_timerEx( zusbTaskId, SEND_FIFO_DATA, SEND_FIFO_DATA_TIME );
 	}
  	USBFW_SELECT_ENDPOINT(oldEndpoint);
 }

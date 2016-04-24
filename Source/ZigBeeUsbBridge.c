@@ -194,6 +194,11 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 		requestAllDevices(NULL);
 		return (events ^ USB_ANNUNCE_MSG);
 	}
+ 
+ 	if (events & SEND_FIFO_DATA){
+		sendFifo();
+		return (events ^ SEND_FIFO_DATA);
+	}
 	
 	if (events & ENDPOINT_REQUEST_MSG){
 		sendOneEndpointRequest();
