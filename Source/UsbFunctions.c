@@ -41,20 +41,6 @@ extern byte zusbTaskId;
 /*********************************************************************
  * LOCAL TYPES
  */
-
-struct GenericDataMsg{
-	uint8 msgCode;
-};
-	 
-struct BindResponse {
-	struct GenericDataMsg generticDataMsg;
-	uint8 srcAddr[Z_EXTADDR_LEN]; // Src address
-  	byte srcEP;                   // Endpoint/interface of source device
-  	uint16 clusterID;             // Cluster ID
-  	zAddrType_t dstAddr;          // Destination address
-  	byte dstEP;                   // Endpoint/interface of dest device
-};
-
 struct AnnunceDataMsg {
 	struct GenericDataMsg genericDataMsg;
 	uint16      nwkAddr;
@@ -88,8 +74,6 @@ struct ReadAttributeResponseMsg {
 };
 
 
-
-
 /*********************************************************************
  * MACROS
  */
@@ -100,13 +84,6 @@ struct ReadAttributeResponseMsg {
  */
 typedef void (*UsbMessageHandler)(uint8 * data);
 
-/*********************************************************************
- * GLOBAL VARIABLES
- */
-
-/*********************************************************************
- * EXTERNAL VARIABLES
- */
 
 
 /*********************************************************************
@@ -124,14 +101,12 @@ static uint8 len;
 static struct SimpleDescrMsg * simpleDescrMsg;
 static struct ReadAttributeResponseMsg * readAttributeResponseMsg;
 static int  currentDeviceElement=0;
-static struct BindResponse bindResponse;
 static AddrMgrEntry_t addrMgrEntry;
 static struct UsbFifoData * usbFifoHead;
 
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
-static void sendUsb(const uint8 * data, uint8 len);
 static bool usbOutProcess(void);
 static UsbMessageHandler parseDataOut(void);
 static void sendFifo(void);
