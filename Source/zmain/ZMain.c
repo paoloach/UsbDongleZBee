@@ -56,6 +56,8 @@
 #include "ZComDef.h"
 #include "ZMAC.h"
 
+#include "AddrMgr.h"
+
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
@@ -76,10 +78,17 @@ static void zmain_lcd_init( void );
  * @brief   First function called after startup.
  * @return  don't care
  */
-	 
+	 uint8 IEEEaddr[8] = {0x80, 0x7F,0x28,0x07,0x00, 0x4b,0x12,0x00};
 int main( void )
 {
+	/*
+	AddrMgrInit(10);
 	
+	AddrMgrEntry_t addrEntry;
+	addrEntry.user = ADDRMGR_USER_DEFAULT;
+	AddrMgrExtAddrSet( addrEntry.extAddr, IEEEaddr);
+	addrEntry.nwkAddr = 1243;
+	AddrMgrEntryUpdate( &addrEntry );*/
   
   // Turn off interrupts
   osal_int_disable( INTS_ALL );

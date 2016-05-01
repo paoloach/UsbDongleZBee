@@ -12,7 +12,7 @@
 #include "hal_board.h"
 #include "hal_types.h"
 #include "endpointRequestList.h"
-#include "AddrMgr.h"
+#include "DeviceManager.h"
 
 /*********************************************************************
  * LOCAL VARIABLES
@@ -65,6 +65,7 @@ static void notHandledMessage(zdoIncomingMsg_t * msg) {
 
 static void annunceMessage(zdoIncomingMsg_t * msg) {
 	ZDO_ParseDeviceAnnce( msg, &device );
+	addDevice(&device);
 	usbSendAnnunce(&device);
 }
 
@@ -111,7 +112,7 @@ static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
 	dataSize=sizeof(struct BindTableResponse );
 	for (i=0; i< len; i++){
 		valid=1;
-		if (AddrMgrNwkAddrLookup(msg, &list->srcAddr)==FALSE){
+		if (deviceNwkAddrLookup(msg, &list->srcAddr)==FALSE){
 			valid=0;
 		}	
 		msg += Z_EXTADDR_LEN;
@@ -119,7 +120,7 @@ static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
 		list->clusterID = BUILD_UINT16( msg[0], msg[1] );
 		msg += 2;
 		if (*msg++ == Addr64Bit){
-			if (AddrMgrNwkAddrLookup(msg, &list->dstAddr)==FALSE){
+			if (deviceNwkAddrLookup(msg, &list->dstAddr)==FALSE){
 				valid=0;
 			}
 			msg += Z_EXTADDR_LEN;
@@ -139,6 +140,7 @@ static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
 			}
 		}
 	}
+	sendUsb((uint8 *)bindTableResponse, dataSize);
 	
 	osal_mem_free(bindTableResponse);
 	

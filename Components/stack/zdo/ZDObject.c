@@ -2085,28 +2085,28 @@ void ZDO_ProcessDeviceAnnce( zdoIncomingMsg_t *inMsg )
 #endif // ZIGBEE_STOCHASTIC_ADDRESSING
 
   // Fill in the extended address in address manager if we don't have it already.
-  addrEntry.user = ADDRMGR_USER_DEFAULT;
-  addrEntry.nwkAddr = Annce.nwkAddr;
-  if ( AddrMgrEntryLookupNwk( &addrEntry ) )
-  {
-    osal_memset( parentExt, 0, Z_EXTADDR_LEN );
-    if ( osal_ExtAddrEqual( parentExt, addrEntry.extAddr ) )
-    {
-      AddrMgrExtAddrSet( addrEntry.extAddr, Annce.extAddr );
-      AddrMgrEntryUpdate( &addrEntry );
-    }
-  }
-
-  // Update the short address in address manager if it's been changed
-  AddrMgrExtAddrSet( addrEntry.extAddr, Annce.extAddr );
-  if ( AddrMgrEntryLookupExt( &addrEntry ) )
-  {
-    if ( addrEntry.nwkAddr != Annce.nwkAddr )
-    {
-      addrEntry.nwkAddr = Annce.nwkAddr;
-      AddrMgrEntryUpdate( &addrEntry );
-    }
-  }
+	addrEntry.user = ADDRMGR_USER_DEFAULT;
+ 	AddrMgrExtAddrSet( addrEntry.extAddr, Annce.extAddr );
+ 	if ( AddrMgrEntryLookupExt( &addrEntry ) == TRUE){
+		if ( addrEntry.nwkAddr != Annce.nwkAddr ) {
+			addrEntry.nwkAddr = Annce.nwkAddr;
+			AddrMgrEntryUpdate( &addrEntry );
+	    }	
+ 	} else  {
+		addrEntry.nwkAddr = Annce.nwkAddr;
+		if ( AddrMgrEntryLookupNwk( &addrEntry )==TRUE ){
+			osal_memset( parentExt, 0, Z_EXTADDR_LEN );
+			if ( osal_ExtAddrEqual( parentExt, addrEntry.extAddr ) ){
+				AddrMgrExtAddrSet( addrEntry.extAddr, Annce.extAddr );
+				AddrMgrEntryUpdate( &addrEntry );
+			}
+		} else {
+			addrEntry.user = ADDRMGR_USER_DEFAULT;
+ 			AddrMgrExtAddrSet( addrEntry.extAddr, Annce.extAddr );
+			addrEntry.nwkAddr = Annce.nwkAddr;
+			AddrMgrEntryUpdate( &addrEntry );
+		}
+	} 
 }
 
 /*********************************************************************

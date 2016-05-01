@@ -9,20 +9,13 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=-2145631624
+Checksum=1967458980
 [CallStack]
 ShowArgs=0
 [Disassembly]
 MixedMode=1
 [BreakpointUsageDialog]
 Placement=_ 738 320 1183 602
-[Log file]
-LoggingEnabled=_ 0
-LogFile=_ ""
-Category=_ 0
-[TermIOLog]
-LoggingEnabled=_ 0
-LogFile=_ ""
 [CallStackLog]
 Enabled=0
 [DriverProfiling]
@@ -45,8 +38,18 @@ GraphEnabled=0
 ShowTimeLog=1
 ShowTimeSum=1
 [Breakpoints2]
-Bp0=_ 1 "STD_CODE2" "{$PROJ_DIR$\..\Source\zmain\ZMain.c}.86.3" 0 0 1 "" 0 ""
-Count=1
+Bp0=_ 0 "STD_CODE2" "LogicalCode:0x5BB9A" 0 0 1 "" 0 ""
+Bp1=_ 0 "STD_CODE2" "LogicalCode:0x2F5C" 0 0 1 "" 0 ""
+Bp2=_ 0 "STD_CODE2" "LogicalCode:0x309F" 0 0 1 "" 0 ""
+Bp3=_ 0 "STD_CODE2" "LogicalCode:0x3073" 0 0 1 "" 0 ""
+Bp4=_ 0 "STD_CODE2" "LogicalCode:0x2F4B" 0 0 1 "" 0 ""
+Bp5=_ 1 "STD_CODE2" "LogicalCode:0x30F1" 0 0 1 "" 0 ""
+Bp6=_ 1 "STD_CODE2" "LogicalCode:0x2AE4" 0 0 1 "" 0 ""
+Bp7=_ 1 "STD_CODE2" "LogicalCode:0x2B6E" 0 0 1 "" 0 ""
+Bp8=_ 1 "STD_CODE2" "LogicalCode:0x359D" 0 0 1 "" 0 ""
+Bp9=_ 1 "STD_CODE2" "LogicalCode:0x2A4D" 0 0 1 "" 0 ""
+Bp10=_ 1 "STD_CODE2" "LogicalCode:0x2AD6" 0 0 1 "" 0 ""
+Count=11
 [Interrupts]
 Enabled=1
 [MemoryMap]
@@ -59,11 +62,28 @@ ActionState=1
 [Trace1]
 Enabled=0
 ShowSource=1
+[struct_types]
+Fmt0=AddrMgrEntry_t-nwkAddr	4	0
+Fmt1=zdoIncomingMsg_t-clusterID	4	0
 [Breakpoints]
-Count=0
+Bp0=_ "STD_CODE" "{$PROJ_DIR$\..\Source\ZdoMessageHandlers.c}.116.4" 0 0 0 0 "" 0 ""
+Bp1=_ "STD_CODE" "LogicalCode:0x3073" 0 0 0 0 "" 0 ""
+Bp2=_ "STD_CODE" "{$PROJ_DIR$\..\Components\stack\zdo\ZDObject.c}.2107.4" 0 0 0 0 "" 0 ""
+Bp3=_ "STD_CODE" "{$PROJ_DIR$\..\Components\stack\zdo\ZDObject.c}.2023.27" 0 0 0 0 "" 0 ""
+Bp4=_ "STD_CODE" "{$PROJ_DIR$\..\Components\stack\zdo\ZDObject.c}.1996.3" 0 0 0 0 "" 0 ""
+Bp5=_ "STD_CODE" "{$PROJ_DIR$\..\Components\stack\zdo\ZDApp.c}.414.3" 0 0 0 0 "" 0 ""
+Bp6=_ "STD_CODE" "{$PROJ_DIR$\..\Source\ZdoMessageHandlers.c}.136.4" 0 0 0 0 "" 0 ""
+Count=7
 [ChipconEmu]
-Stop timers on halt=0
+Stop timers on halt=1
 Leave target running=1
+[Log file]
+LoggingEnabled=_ 0
+LogFile=_ ""
+Category=_ 0
+[TermIOLog]
+LoggingEnabled=_ 0
+LogFile=_ ""
 [Aliases]
 Count=0
 SuppressDialog=0

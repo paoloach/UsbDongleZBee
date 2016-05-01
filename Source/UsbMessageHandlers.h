@@ -19,6 +19,7 @@ void usbReqAttributeValue(uint8 * data);
 void usbSendCmdCluster(uint8 * data);
 void usbWriteAttributeValue(uint8 * data);
 void requestAllDevices(uint8 * data);
+void requestAllDevices2(uint8 * data);
 void usbReqBindTable(uint8 * dat);
 void usbAddBindTable(uint8 * dat);
 void usbRemoveBindTable(uint8 * dat);

@@ -39,6 +39,8 @@
 #include "stdio.h"
 #include "endpointRequestList.h"
 	 
+#include "DeviceManager.h"
+	 
 
 /*********************************************************************
  * MACROS
@@ -113,6 +115,7 @@ SimpleDescriptionFormat_t simpleDesc = {
 void zusbAppInit( byte task_id ){
 	zusbTaskId = task_id;
   
+	deviceManagerInit();
  	ZigBeeInitUSB();
 	endpointRequestTaskId(zusbTaskId);
 	zclHA_Init( &simpleDesc );
@@ -120,6 +123,7 @@ void zusbAppInit( byte task_id ){
  	zcl_registerForMsg( zusbTaskId );
 	
 	ZDO_RegisterForZDOMsg( zusbTaskId, End_Device_Bind_rsp );
+	ZDO_RegisterForZDOMsg( zusbTaskId, Mgmt_Bind_rsp );
 	ZDO_RegisterForZDOMsg( zusbTaskId, Match_Desc_rsp );
 	ZDO_RegisterForZDOMsg( zusbTaskId, Device_annce);
 	ZDO_RegisterForZDOMsg( zusbTaskId, Active_EP_rsp);
@@ -193,6 +197,11 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 	if (events & USB_ANNUNCE_MSG){
 		requestAllDevices(NULL);
 		return (events ^ USB_ANNUNCE_MSG);
+	}
+	
+	if (events & USB_ANNUNCE2_MSG){
+		requestAllDevices2(NULL);
+		return (events ^ USB_ANNUNCE2_MSG);
 	}
  
  	if (events & SEND_FIFO_DATA){

@@ -22,6 +22,7 @@
 #include "hal_usbdongle_cfg.h"
 #include "TimerEvents.h"
 #include "UsbFifoData.h"
+#include "DeviceManager.h"
  
 
 
@@ -77,8 +78,8 @@ struct ReadAttributeResponseMsg {
 /*********************************************************************
  * MACROS
  */
-#define ANNUNCE_SEND_TIMEOUT   100     // Every 100 ms
-#define SEND_FIFO_DATA_TIME   100     // Every 100 ms
+#define ANNUNCE_SEND_TIMEOUT   1000     // Every 100 ms
+#define SEND_FIFO_DATA_TIME   1000     // Every 100 ms
 
 /*********************************************************************
  * LOCAL TYPEDEFS
@@ -359,13 +360,40 @@ void usbSendAttributeResponseMsg(zclReadRspStatus_t * readResponse, uint16 clust
 	osal_mem_free(readAttributeResponseMsg);
 }
 
+void requestAllDevices2(uint8 * notUsed){
+	if (currentDeviceElement < DEVICE_MANAGER_TABLE_SIZE){
+		while(1){
+			ZDO_DeviceAnnce_t * device = deviceEntryGet(currentDeviceElement);
+			if (device != NULL){
+				annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
+				annunceDataMsg.nwkAddr = device->nwkAddr;
+				sAddrExtCmp(annunceDataMsg.extAddr, device->extAddr);
+				annunceDataMsg.capabilities = device->capabilities;
+				sendUsb((uint8 *)&annunceDataMsg, sizeof(annunceDataMsg));
+				osal_start_timerEx( zusbTaskId, USB_ANNUNCE2_MSG, ANNUNCE_SEND_TIMEOUT );
+				currentDeviceElement++;
+				return;
+			} else{
+				if (currentDeviceElement >=NWK_MAX_ADDRESSES){
+					currentDeviceElement=0;
+					osal_stop_timerEx(zusbTaskId, USB_ANNUNCE2_MSG);
+					return;
+				}
+			}
+			currentDeviceElement++;
+		}
+	} else {
+		osal_stop_timerEx(zusbTaskId, USB_ANNUNCE2_MSG);
+		currentDeviceElement =0;
+	}
+}
 
 void requestAllDevices(uint8 * notUsed){
 	if (currentDeviceElement < NWK_MAX_ADDRESSES){
 		while(1){
 			addrMgrEntry.index=currentDeviceElement;
 			addrMgrEntry.user=ADDRMGR_USER_DEFAULT;
-			currentDeviceElement++;
+			
 			if (AddrMgrEntryGet(&addrMgrEntry)==TRUE){
 				annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
 				annunceDataMsg.nwkAddr = addrMgrEntry.nwkAddr;
@@ -373,13 +401,18 @@ void requestAllDevices(uint8 * notUsed){
 				annunceDataMsg.capabilities = 0;
 				sendUsb((uint8 *)&annunceDataMsg, sizeof(annunceDataMsg));
 				osal_start_timerEx( zusbTaskId, USB_ANNUNCE_MSG, ANNUNCE_SEND_TIMEOUT );
+				currentDeviceElement++;
+				return;
 			} else{
 				if (currentDeviceElement >=NWK_MAX_ADDRESSES){
 					currentDeviceElement=0;
 					osal_stop_timerEx(zusbTaskId, USB_ANNUNCE_MSG);
+					currentDeviceElement=0;
+					osal_start_timerEx( zusbTaskId, USB_ANNUNCE2_MSG, ANNUNCE_SEND_TIMEOUT );
 					return;
 				}
 			}
+			currentDeviceElement++;
 		}
 	} else {
 		osal_stop_timerEx(zusbTaskId, USB_ANNUNCE_MSG);

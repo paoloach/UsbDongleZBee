@@ -796,7 +796,7 @@
         </option>
         <option>
           <name>OverlapWarnings</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>NoGlobalCheck</name>
@@ -956,11 +956,11 @@
         </option>
         <option>
           <name>AllowExtraOutput</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>GenerateExtraOutput</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>XExtraOutOverride</name>
@@ -968,12 +968,12 @@
         </option>
         <option>
           <name>ExtraOutputFile</name>
-          <state>UsbDongle.sim</state>
+          <state>UsbDongle.a51</state>
         </option>
         <option>
           <name>ExtraOutputFormat</name>
           <version>11</version>
-          <state>60</state>
+          <state>23</state>
         </option>
         <option>
           <name>ExtraFormatVariant</name>
@@ -998,7 +998,7 @@
         </option>
         <option>
           <name>OverlaySystemMap</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>RawBinaryFile</name>
@@ -1117,6 +1117,12 @@
     <group>
       <name>usb</name>
       <file>
+        <name>$PROJ_DIR$\..\Source\DeviceManager.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\Source\DeviceManager.h</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$\..\Source\endpointRequestList.c</name>
       </file>
       <file>
@@ -1124,6 +1130,9 @@
       </file>
       <file>
         <name>$PROJ_DIR$\..\Source\OSAL_UsbCoordinator.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$\..\Source\TimerEvents.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\Components\hal\target\CC2530USB\usb\class_UsbCoordinator\usb_zigbee_bridge_descriptor.s51</name>
