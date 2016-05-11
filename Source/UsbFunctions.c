@@ -74,6 +74,15 @@ struct ReadAttributeResponseMsg {
 	uint8 data[MAX_DATA_SIZE];
 };
 
+struct ReadAttributeResponseErrorMsg {
+	struct GenericDataMsg generticDataMsg;
+	uint16 networkAddr;
+	uint8 endpoint;
+	uint16 clusterId;
+	uint16 attrID;
+	uint8  zStatus;
+};
+
 
 /*********************************************************************
  * MACROS
@@ -333,6 +342,17 @@ void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc) {
 	}
 	sendUsb((uint8 *)simpleDescrMsg, sizeof(struct SimpleDescrMsg));
 	osal_mem_free(simpleDescrMsg);
+}
+
+void usbSendAttributeResponseMsgError(uint16 nwkAddr, uint8 endpoint, uint16 cluster, uint16 attributeId, ZStatus_t status){
+	struct ReadAttributeResponseErrorMsg  response;
+	response.attrID = attributeId;
+	response.clusterId = cluster;
+	response.endpoint = endpoint;
+	response.networkAddr = nwkAddr;
+	response.zStatus = status;
+	response.generticDataMsg.msgCode = ATTRIBUTE_VALUE_REQ_ERROR;
+	sendUsb((const uint8 *)&response, sizeof(struct ReadAttributeResponseErrorMsg));
 }
 
 void usbSendAttributeResponseMsg(zclReadRspStatus_t * readResponse, uint16 cluster, afAddrType_t * address ) {

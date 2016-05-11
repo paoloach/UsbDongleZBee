@@ -18,6 +18,7 @@
 #include "BindingTable.h"
 #include "ZDProfile.h"
 #include "AddrMgr.h"
+#include "UsbFunctions.h"
 
 /*********************************************************************
  * LOCAL CONSTANTS
@@ -213,6 +214,9 @@ void usbReqAttributeValue(uint8 * data) {
                             ZCL_FRAME_CLIENT_SERVER_DIR,
 							FALSE,
 							0);
+	if (result != ZSuccess){
+		usbSendAttributeResponseMsgError(reqAttributeValueMsg->nwkAddr, reqAttributeValueMsg->endpoint, reqAttributeValueMsg->cluster, reqAttributeValueMsg->attributeId, result);
+	}
 }
 /***********************************************************************************
 * @brief        return to USB the bind table
