@@ -54,11 +54,20 @@ struct BindTableResponse {
 	struct BindTableResponseEntry list[];
 };
 
+struct ReqAttributeValueMsg {
+	uint8       messageCode;
+	uint16      nwkAddr;
+	uint8       endpoint;
+	uint16		cluster;
+	uint8		numAttributes;
+	uint16      attributeId[];
+};
+
 void Usb_ProcessLoop(void);
 void usbSendAnnunce(ZDO_DeviceAnnce_t * device);
 void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc);
-void usbSendAttributeResponseMsg(zclReadRspStatus_t *pInMsg, uint16 cluster, afAddrType_t * address );
-void usbSendAttributeResponseMsgError(uint16 nwkAddr, uint8 endpoint, uint16 cluster, uint16 attributeId, ZStatus_t status);
+void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address );
+void usbSendAttributeResponseMsgError(struct ReqAttributeValueMsg *, ZStatus_t status);
 void sendUsb(const uint8 * data, uint8 len);
 void sendFifo(void);
 void usbSendDataChunk( uint8 type, uint8 * data, uint8 len);

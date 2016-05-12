@@ -37,13 +37,7 @@ struct ReqActiveEndpointsMsg {
 	uint16      nwkAddr;
 };
 
-struct ReqAttributeValueMsg {
-	uint8       messageCode;
-	uint16      nwkAddr;
-	uint8       endpoint;
-	uint16		cluster;
-	uint16      attributeId;
-};
+
 
 struct SendCmdMsg {
 	uint8       messageCode;
@@ -202,9 +196,11 @@ void usbReqAttributeValue(uint8 * data) {
 	afAddrType.addrMode = afAddr16Bit;
 	afAddrType.endPoint = reqAttributeValueMsg->endpoint;
 	
-	readCmd = (zclReadCmd_t *)osal_mem_alloc( sizeof ( zclReadCmd_t ) + sizeof(uint16) );
-	readCmd->numAttr = 1;
-	readCmd->attrID[0] = reqAttributeValueMsg->attributeId;
+	readCmd = (zclReadCmd_t *)osal_mem_alloc( sizeof ( zclReadCmd_t ) +reqAttributeValueMsg->numAttributes* sizeof(uint16) );
+	readCmd->numAttr = reqAttributeValueMsg->numAttributes;
+	for (uint8 i=0; i < reqAttributeValueMsg->numAttributes; i++){
+		readCmd->attrID[i] = reqAttributeValueMsg->attributeId[i];
+	}
 	
 	ZStatus_t result =  zcl_SendRead( 
 							ENDPOINT,
@@ -215,7 +211,7 @@ void usbReqAttributeValue(uint8 * data) {
 							FALSE,
 							0);
 	if (result != ZSuccess){
-		usbSendAttributeResponseMsgError(reqAttributeValueMsg->nwkAddr, reqAttributeValueMsg->endpoint, reqAttributeValueMsg->cluster, reqAttributeValueMsg->attributeId, result);
+		usbSendAttributeResponseMsgError(reqAttributeValueMsg, result);
 	}
 }
 /***********************************************************************************

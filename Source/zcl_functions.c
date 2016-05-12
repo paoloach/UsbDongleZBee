@@ -32,8 +32,7 @@
 /*********************************************************************
  * LOCAL VARIABLES
  */
-static uint8 index;
-static zclReadRspCmd_t *readRspCmd;;
+
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
@@ -99,12 +98,8 @@ void zclCoordinatort_ProcessZCLIncomingMsg( zclIncomingMsg_t *pInMsg){
  * @return  none
  */
 static uint8 ZCLProcessInReadRspCmd( zclIncomingMsg_t *pInMsg ){
-	readRspCmd = (zclReadRspCmd_t *)pInMsg->attrCmd;
-	for (index = 0; index < readRspCmd->numAttr; index++) {
-		usbSendAttributeResponseMsg(&(readRspCmd->attrList[index]), pInMsg->clusterId, &(pInMsg->srcAddr));
-	}
-
-  return TRUE; 
+	usbSendAttributeResponseMsg((zclReadRspCmd_t *)pInMsg->attrCmd, pInMsg->clusterId, &(pInMsg->srcAddr));
+	return TRUE; 
 }
 
 /*********************************************************************
@@ -116,9 +111,9 @@ static uint8 ZCLProcessInReadRspCmd( zclIncomingMsg_t *pInMsg ){
  *
  * @return  none
  */
-static uint8 ZCLProcessInWriteRspCmd( zclIncomingMsg_t *pInMsg )
-{
+static uint8 ZCLProcessInWriteRspCmd( zclIncomingMsg_t *pInMsg ){
   zclWriteRspCmd_t *writeRspCmd;
+  static uint8 index;
 
   writeRspCmd = (zclWriteRspCmd_t *)pInMsg->attrCmd;
   for (index = 0; index < writeRspCmd->numAttr; index++)

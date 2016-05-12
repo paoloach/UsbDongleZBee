@@ -61,6 +61,13 @@ struct SimpleDescrMsg {
 	uint16		clustersList[MAX_CLUSTERS];
 };
 
+struct AttributeResponse {
+	uint16 attrID;
+	uint8 status;
+	uint8 dataType;
+	uint8 data[];
+};
+
 struct ReadAttributeResponseMsg {
 	struct GenericDataMsg generticDataMsg;
 	uint8 type;
@@ -68,10 +75,8 @@ struct ReadAttributeResponseMsg {
 	uint16 networkAddr;
 	uint8 endpoint;
 	uint16 panId;
-	uint16 attrID;
-	uint8 status;
-	uint8 dataLen;
-	uint8 data[MAX_DATA_SIZE];
+	uint8  numAttributes;
+	struct AttributeResponse attributes[];
 };
 
 struct ReadAttributeResponseErrorMsg {
@@ -79,8 +84,10 @@ struct ReadAttributeResponseErrorMsg {
 	uint16 networkAddr;
 	uint8 endpoint;
 	uint16 clusterId;
-	uint16 attrID;
 	uint8  zStatus;
+	uint8  attrCount;
+	uint16 attrID[];
+	
 };
 
 
@@ -110,7 +117,6 @@ static uint16 * maxDest;
 static uint16 * src;
 static uint8 len;
 static struct SimpleDescrMsg * simpleDescrMsg;
-static struct ReadAttributeResponseMsg * readAttributeResponseMsg;
 static int  currentDeviceElement=0;
 static AddrMgrEntry_t addrMgrEntry;
 static struct UsbFifoData * usbFifoHead;
@@ -344,40 +350,89 @@ void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc) {
 	osal_mem_free(simpleDescrMsg);
 }
 
-void usbSendAttributeResponseMsgError(uint16 nwkAddr, uint8 endpoint, uint16 cluster, uint16 attributeId, ZStatus_t status){
-	struct ReadAttributeResponseErrorMsg  response;
-	response.attrID = attributeId;
-	response.clusterId = cluster;
-	response.endpoint = endpoint;
-	response.networkAddr = nwkAddr;
-	response.zStatus = status;
-	response.generticDataMsg.msgCode = ATTRIBUTE_VALUE_REQ_ERROR;
-	sendUsb((const uint8 *)&response, sizeof(struct ReadAttributeResponseErrorMsg));
+void usbSendAttributeResponseMsgError(struct ReqAttributeValueMsg * attributesValue, ZStatus_t status){
+	struct ReadAttributeResponseErrorMsg  * response;
+	
+	uint8 dataSize = sizeof(struct ReadAttributeResponseErrorMsg)+2*attributesValue->numAttributes;
+	response = osal_mem_alloc(dataSize);
+	response->clusterId = attributesValue->cluster;
+	response->endpoint = attributesValue->endpoint;
+	response->networkAddr = attributesValue->nwkAddr;
+	response->zStatus = status;
+	response->attrCount = attributesValue->numAttributes;
+	response->generticDataMsg.msgCode = ATTRIBUTE_VALUE_REQ_ERROR;
+	osal_memcpy(response->attrID, attributesValue->attributeId, 2*attributesValue->numAttributes);
+	sendUsb((const uint8 *)&response,dataSize);
 }
 
-void usbSendAttributeResponseMsg(zclReadRspStatus_t * readResponse, uint16 cluster, afAddrType_t * address ) {
-	readAttributeResponseMsg = osal_mem_alloc(sizeof(struct  ReadAttributeResponseMsg));
-	
-	readAttributeResponseMsg->generticDataMsg.msgCode= ATTRIBUTE_VALUES;
-	readAttributeResponseMsg->clusterId = cluster;
-	readAttributeResponseMsg->networkAddr =address->addr.shortAddr;
-	readAttributeResponseMsg->endpoint =address->endPoint;
-	readAttributeResponseMsg->panId  = address->panId;
-	readAttributeResponseMsg->type = readResponse->dataType;
-	readAttributeResponseMsg->attrID = readResponse->attrID;
-	readAttributeResponseMsg->status = readResponse->status;
-	if (readAttributeResponseMsg->status == ZCL_STATUS_SUCCESS){
-		readAttributeResponseMsg->dataLen = zclGetAttrDataLength(readResponse->dataType, readResponse->data);
-		if (readAttributeResponseMsg->dataLen > MAX_DATA_SIZE){
-			readAttributeResponseMsg->dataLen = MAX_DATA_SIZE;
+void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address ) {
+	zclReadRspStatus_t * iter = readRspCmd->attrList;
+	zclReadRspStatus_t * iterSend = readRspCmd->attrList;
+	zclReadRspStatus_t * iterEnd = readRspCmd->attrList+readRspCmd->numAttr;
+	struct AttributeResponse  * attributeResponse;
+	uint16 dataSize = sizeof(struct ReadAttributeResponseMsg);
+	uint8  i;
+	uint8	 attrSize;
+	uint8  tmpNumAttributes=0;
+	uint16 tmpDataSize;
+	for (; iter < iterEnd; iter++){
+		attrSize = zclGetAttrDataLength(iter->dataType, iter->data);
+		tmpDataSize =dataSize +attrSize+sizeof(struct AttributeResponse);
+		if (tmpDataSize > BULK_SIZE_IN){
+			if (tmpNumAttributes>0){
+				struct ReadAttributeResponseMsg * response = osal_mem_alloc(dataSize);
+				if (response == NULL){
+					return;
+				}
+				response->generticDataMsg.msgCode= ATTRIBUTE_VALUES;
+				response->clusterId=cluster;
+				response->networkAddr =address->addr.shortAddr;
+				response->endpoint =address->endPoint;
+				response->panId  = address->panId;
+				response->numAttributes = tmpNumAttributes;
+				attributeResponse = response->attributes;
+				for (i=0; i < tmpNumAttributes; i++){
+					attrSize = zclGetAttrDataLength(iterSend->dataType, iterSend->data);
+					attributeResponse->attrID = iterSend->attrID;
+					attributeResponse->dataType = iterSend->dataType;
+					attributeResponse->status = iterSend->status;
+					osal_memcpy(&attributeResponse->data, iterSend->data, attrSize);
+					attributeResponse = (struct AttributeResponse *)(((uint8 *)attributeResponse) + sizeof(struct AttributeResponse) + attrSize);
+					iterSend++;
+				}
+				sendUsb((const uint8 *)response, dataSize);
+				osal_mem_free(response);
+				tmpNumAttributes=1;
+				dataSize =  sizeof(struct ReadAttributeResponseMsg) + attrSize;
+			}
+		} else {
+			tmpNumAttributes++;
+			dataSize = tmpDataSize;
 		}
-		osal_memcpy(readAttributeResponseMsg->data, readResponse->data, readAttributeResponseMsg->dataLen);
-	} else {
-		readAttributeResponseMsg->dataLen=0;
+		iter++;
 	}
-	
-	sendUsb((const uint8 *)readAttributeResponseMsg, sizeof(struct ReadAttributeResponseMsg));
-	osal_mem_free(readAttributeResponseMsg);
+	struct ReadAttributeResponseMsg * response = osal_mem_alloc(dataSize);
+	if (response == NULL){
+		return;
+	}
+	response->generticDataMsg.msgCode= ATTRIBUTE_VALUES;
+	response->clusterId=cluster;
+	response->networkAddr =address->addr.shortAddr;
+	response->endpoint =address->endPoint;
+	response->panId  = address->panId;
+	response->numAttributes = tmpNumAttributes;
+	attributeResponse = response->attributes;
+	for (i=0; i < tmpNumAttributes; i++){
+		attrSize = zclGetAttrDataLength(iterSend->dataType, iterSend->data);
+		attributeResponse->attrID = iterSend->attrID;
+		attributeResponse->dataType = iterSend->dataType;
+		attributeResponse->status = iterSend->status;
+		osal_memcpy(&attributeResponse->data, iterSend->data, attrSize);
+		attributeResponse = (struct AttributeResponse *)(((uint8 *)attributeResponse) + sizeof(struct AttributeResponse) + attrSize);
+		iterSend++;
+	}
+	sendUsb((const uint8 *)response, dataSize);
+	osal_mem_free(response);
 }
 
 void requestAllDevices2(uint8 * notUsed){
