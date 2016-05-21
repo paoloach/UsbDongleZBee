@@ -409,7 +409,6 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 			tmpNumAttributes++;
 			dataSize = tmpDataSize;
 		}
-		iter++;
 	}
 	struct ReadAttributeResponseMsg * response = osal_mem_alloc(dataSize);
 	if (response == NULL){
