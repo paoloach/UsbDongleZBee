@@ -34,6 +34,7 @@
 #define BIND_TABLE 0x0D
 #define REQ_ADD_BIND_TABLE_ENTRY 0x0E
 #define REQ_REMOVE_BIND_TABLE_ENTRY 0x0F
+#define REQ_RESET				    0x10
 #define ATTRIBUTE_VALUE_REQ_ERROR	0x40
 
 struct GenericDataMsg{

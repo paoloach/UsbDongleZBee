@@ -286,6 +286,8 @@ UsbMessageHandler parseDataOut(void) {
 	switch(rxData[0]){
 	case REQ_SIMPLE_DESC:
 		return usbReqSimpleDesc;
+	case REQ_RESET:
+		return reset;
 	case REQ_ACTIVE_EP:
 		HAL_TOGGLE_LED1();
 		return usbReqActiveEndpoint;

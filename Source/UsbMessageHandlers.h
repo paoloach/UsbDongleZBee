@@ -13,6 +13,7 @@
 #include "AddrMgr.h"
 
 void usbNullMessage(uint8 * data);
+void reset(uint8 * data);
 void usbReqSimpleDesc(uint8 * data);
 void usbReqActiveEndpoint(uint8 * data);
 void usbReqAttributeValue(uint8 * data);
