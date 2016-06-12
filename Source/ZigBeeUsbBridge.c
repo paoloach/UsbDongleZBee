@@ -145,7 +145,7 @@ void zusbAppInit( byte task_id ){
  * @return  none
  */
 UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
-	afIncomingMSGPacket_t *MSGpkt;
+	struct ReqAttributeMsg * reqAttributeMsg;
 	afDataConfirm_t *afDataConfirm;
 
 	// Data Confirmation message fields
@@ -155,43 +155,56 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 	(void)task_id;  // Intentionally unreferenced parameter
 
 	if ( events & SYS_EVENT_MSG ) {
-		MSGpkt = (afIncomingMSGPacket_t *)osal_msg_receive( zusbTaskId );
-		while ( MSGpkt ){
-			switch ( MSGpkt->hdr.event ){
-				case ZCL_INCOMING_MSG:
-					// Incoming ZCL Foundation command/response messages
-					zclCoordinatort_ProcessZCLIncomingMsg( (zclIncomingMsg_t *)MSGpkt );
-					break;
-				case ZDO_CB_MSG:
-					zdoMsg =  (zdoIncomingMsg_t *)MSGpkt;
-					ZDOMessageHandlerFactory(zdoMsg->clusterID)(zdoMsg);
-					break;
-          		case AF_DATA_CONFIRM_CMD:
-		          // This message is received as a confirmation of a data packet sent.
-		          // The status is of ZStatus_t type [defined in ZComDef.h]
-		          // The message fields are defined in AF.h
-					afDataConfirm = (afDataConfirm_t *)MSGpkt;
-					sentEP = afDataConfirm->endpoint;
-					sentStatus = afDataConfirm->hdr.status;
-					sentTransID = afDataConfirm->transID;
-					(void)sentEP;
-					(void)sentTransID;
+		osal_event_hdr_t * hdrEvent = (osal_event_hdr_t *) osal_msg_receive( zusbTaskId );
+		switch (hdrEvent->event ){
+			case EVENT_ATTRIBUTE_VALUE:{
+				reqAttributeMsg  = (struct ReqAttributeMsg *)hdrEvent;
+				ZStatus_t result =  zcl_SendRead( 
+								ENDPOINT,
+								&reqAttributeMsg->afAddrType,
+								reqAttributeMsg->cluster,
+								&reqAttributeMsg->readCmd,
+								ZCL_FRAME_CLIENT_SERVER_DIR,
+								FALSE,
+								0);
+				
+				if (result != ZSuccess){
+					usbSendAttributeResponseMsgError(reqAttributeMsg, result);
+				}
+				}
+				break;
+			case ZCL_INCOMING_MSG:
+				// Incoming ZCL Foundation command/response messages
+				zclCoordinatort_ProcessZCLIncomingMsg( (zclIncomingMsg_t *)hdrEvent );
+				break;
+			case ZDO_CB_MSG:
+				zdoMsg =  (zdoIncomingMsg_t *)hdrEvent;
+				ZDOMessageHandlerFactory(zdoMsg->clusterID)(zdoMsg);
+				break;
+			case AF_DATA_CONFIRM_CMD:
+			  // This message is received as a confirmation of a data packet sent.
+			  // The status is of ZStatus_t type [defined in ZComDef.h]
+			  // The message fields are defined in AF.h
+				afDataConfirm = (afDataConfirm_t *)hdrEvent;
+				sentEP = afDataConfirm->endpoint;
+				sentStatus = afDataConfirm->hdr.status;
+				sentTransID = afDataConfirm->transID;
+				(void)sentEP;
+				(void)sentTransID;
 
-					// Action taken when confirmation is received.
-					if ( sentStatus != ZSuccess ) {
-						// The data wasn't delivered -- Do something
-					}
-					break;
-				case AF_INCOMING_MSG_CMD:
-					zusbMessageMSGCB( MSGpkt );
-					break;
-		        default:
-					break;
-			}
-		osal_msg_deallocate( (uint8 *)MSGpkt );
-      	MSGpkt = (afIncomingMSGPacket_t *)osal_msg_receive( zusbTaskId );
+				// Action taken when confirmation is received.
+				if ( sentStatus != ZSuccess ) {
+					// The data wasn't delivered -- Do something
+				}
+				break;
+			case AF_INCOMING_MSG_CMD:
+				zusbMessageMSGCB((afIncomingMSGPacket_t *) hdrEvent );
+				break;
+			default:
+				break;
 		}
-    return (events ^ SYS_EVENT_MSG);
+		osal_msg_deallocate( (uint8 *)hdrEvent );
+	    return (events ^ SYS_EVENT_MSG);
 	}
 
 	if (events & USB_ANNUNCE_MSG){
@@ -213,6 +226,7 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 		sendOneEndpointRequest();
 		return (events ^ ENDPOINT_REQUEST_MSG);
 	}
+	
 	return 0;
 }
 

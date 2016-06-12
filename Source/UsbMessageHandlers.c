@@ -6,9 +6,6 @@
 
 **************************************************************************************************/
 
-/*********************************************************************
- * INCLUDES
- */
 #include "UsbMessageHandlers.h"
 #include "ZComDef.h"
 #include "ZDProfile.h"
@@ -20,14 +17,10 @@
 #include "AddrMgr.h"
 #include "UsbFunctions.h"
 #include "OnBoard.h"
+#include "TimerEvents.h"
 
-/*********************************************************************
- * LOCAL CONSTANTS
- */
+extern byte zusbTaskId;
 
-/*********************************************************************
- * LOCAL TYPES
- */
 struct ReqSimpleDescMsg {
 	uint8       messageCode;
 	uint16      nwkAddr;
@@ -37,8 +30,6 @@ struct ReqActiveEndpointsMsg {
 	uint8       messageCode;
 	uint16      nwkAddr;
 };
-
-
 
 struct SendCmdMsg {
 	uint8       messageCode;
@@ -96,7 +87,6 @@ static struct SendCmdMsg * sendcmdMsg;
 static zAddrType_t destAddr;
 static afAddrType_t afAddrType;
 static zclWriteCmd_t *  zclWriteCmd;
-static zclReadCmd_t *readCmd;
 static struct WriteAttributeValueMsg * writeAttributeValueMsg;
 static struct BindTableRequestMsg * bindTableRequestMsg;
 static struct BindRequest * bindRequest;
@@ -170,27 +160,18 @@ void usbReqActiveEndpoint(uint8 * data) {
 void usbReqAttributeValue(uint8 * data) {
 	reqAttributeValueMsg = (struct ReqAttributeValueMsg *)data;
 	
-	afAddrType.addr.shortAddr = reqAttributeValueMsg->nwkAddr;
-	afAddrType.addrMode = afAddr16Bit;
-	afAddrType.endPoint = reqAttributeValueMsg->endpoint;
+	struct ReqAttributeMsg * msg = (struct ReqAttributeMsg *)osal_msg_allocate(sizeof(struct ReqAttributeMsg) +reqAttributeValueMsg->numAttributes* sizeof(uint16)  );
+	msg->hdrEvent.event = EVENT_ATTRIBUTE_VALUE;
+	msg->afAddrType.addr.shortAddr = reqAttributeValueMsg->nwkAddr;
+	msg->afAddrType.addrMode = afAddr16Bit;
+	msg->afAddrType.endPoint = reqAttributeValueMsg->endpoint;
 	
-	readCmd = (zclReadCmd_t *)osal_mem_alloc( sizeof ( zclReadCmd_t ) +reqAttributeValueMsg->numAttributes* sizeof(uint16) );
-	readCmd->numAttr = reqAttributeValueMsg->numAttributes;
+	msg->readCmd.numAttr = reqAttributeValueMsg->numAttributes;
 	for (uint8 i=0; i < reqAttributeValueMsg->numAttributes; i++){
-		readCmd->attrID[i] = reqAttributeValueMsg->attributeId[i];
+		msg->readCmd.attrID[i] = reqAttributeValueMsg->attributeId[i];
 	}
-	
-	ZStatus_t result =  zcl_SendRead( 
-							ENDPOINT,
-							&afAddrType,
-                            reqAttributeValueMsg->cluster,
-							readCmd,
-                            ZCL_FRAME_CLIENT_SERVER_DIR,
-							FALSE,
-							0);
-	if (result != ZSuccess){
-		usbSendAttributeResponseMsgError(reqAttributeValueMsg, result);
-	}
+	msg->cluster = reqAttributeValueMsg->cluster;
+	osal_msg_send(zusbTaskId, (uint8 *)msg);
 }
 /***********************************************************************************
 * @brief        return to USB the bind table

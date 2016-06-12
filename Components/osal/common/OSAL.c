@@ -551,9 +551,7 @@ static uint8 osal_msg_enqueue_push( uint8 destination_task, uint8 *msg_ptr, uint
   }
 
   // Check the message header
-  if ( OSAL_MSG_NEXT( msg_ptr ) != NULL ||
-       OSAL_MSG_ID( msg_ptr ) != TASK_NO_TASK )
-  {
+  if ( OSAL_MSG_NEXT( msg_ptr ) != NULL || OSAL_MSG_ID( msg_ptr ) != TASK_NO_TASK ) {
     osal_msg_deallocate( msg_ptr );
     return ( INVALID_MSG_POINTER );
   }

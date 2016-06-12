@@ -10,6 +10,9 @@
 #define __USB_MESSAGE_HANDLERS__H_
 
 #include "hal_types.h"
+#include "osal.h"
+#include "af.h"
+#include "zcl.h"
 #include "AddrMgr.h"
 
 void usbNullMessage(uint8 * data);
@@ -27,4 +30,11 @@ void usbRemoveBindTable(uint8 * dat);
 
 
 void addrMgrUserCB( uint8  update,  AddrMgrEntry_t* newEntry,  AddrMgrEntry_t* oldEntry);
+
+struct ReqAttributeMsg {
+	osal_event_hdr_t hdrEvent;
+	afAddrType_t afAddrType;
+	uint16	cluster;
+	zclReadCmd_t readCmd;
+};
 #endif

@@ -352,18 +352,18 @@ void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc) {
 	osal_mem_free(simpleDescrMsg);
 }
 
-void usbSendAttributeResponseMsgError(struct ReqAttributeValueMsg * attributesValue, ZStatus_t status){
+void usbSendAttributeResponseMsgError(struct ReqAttributeMsg * attributesValue, ZStatus_t status){
 	struct ReadAttributeResponseErrorMsg  * response;
 	
-	uint8 dataSize = sizeof(struct ReadAttributeResponseErrorMsg)+2*attributesValue->numAttributes;
+	uint8 dataSize = sizeof(struct ReadAttributeResponseErrorMsg)+2*attributesValue->readCmd.numAttr;
 	response = osal_mem_alloc(dataSize);
 	response->clusterId = attributesValue->cluster;
-	response->endpoint = attributesValue->endpoint;
-	response->networkAddr = attributesValue->nwkAddr;
+	response->endpoint = attributesValue->afAddrType.endPoint;
+	response->networkAddr = attributesValue->afAddrType.addr.shortAddr;
 	response->zStatus = status;
-	response->attrCount = attributesValue->numAttributes;
+	response->attrCount = attributesValue->readCmd.numAttr;
 	response->generticDataMsg.msgCode = ATTRIBUTE_VALUE_REQ_ERROR;
-	osal_memcpy(response->attrID, attributesValue->attributeId, 2*attributesValue->numAttributes);
+	osal_memcpy(response->attrID, attributesValue->readCmd.attrID, 2*attributesValue->readCmd.numAttr);
 	sendUsb((const uint8 *)&response,dataSize);
 }
 

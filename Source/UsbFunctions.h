@@ -12,9 +12,10 @@
 
 #include "ZDObject.h"
 #include "zcl.h"
+#include "UsbMessageHandlers.h"
 
 #define BULK_SIZE_OUT 64
-#define BULK_SIZE_IN 128
+#define BULK_SIZE_IN 64
 #define MAX_DATE_SIZE_3 128
 #define MAX_DATE_SIZE_2 64
 
@@ -68,7 +69,7 @@ void Usb_ProcessLoop(void);
 void usbSendAnnunce(ZDO_DeviceAnnce_t * device);
 void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc);
 void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address );
-void usbSendAttributeResponseMsgError(struct ReqAttributeValueMsg *, ZStatus_t status);
+void usbSendAttributeResponseMsgError(struct ReqAttributeMsg *, ZStatus_t status);
 void sendUsb(const uint8 * data, uint8 len);
 void sendFifo(void);
 void usbSendDataChunk( uint8 type, uint8 * data, uint8 len);
