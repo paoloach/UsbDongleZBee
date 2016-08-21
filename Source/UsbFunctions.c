@@ -240,6 +240,8 @@ void usbLog(uint16 nwkAddr, const char * msg, ...) {
 	vsprintf (buffer, msg, args);
 	va_end (args);
 	
+	nwkAddr = osal_heap_block_cnt();
+	
 	int8 len = strlen(buffer)+1;
 	if (len > ENDPOINT_LOG_SIZE-3){
 		len = ENDPOINT_LOG_SIZE-3;
@@ -258,6 +260,7 @@ void usbLog(uint16 nwkAddr, const char * msg, ...) {
 	}
 	USBFW_ARM_IN_ENDPOINT();
     USBFW_SELECT_ENDPOINT(oldEndpoint);
+	osal_mem_free(buffer);
 }
 
 /**

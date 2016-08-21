@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=1126277571
+Checksum=161837422
 [CallStack]
 ShowArgs=0
 [Disassembly]
@@ -73,8 +73,8 @@ Fmt3={W}0:IEN2	1	0
 Fmt4={W}0:len	3	0
 Fmt5={W}0:usbcif	1	0
 [Breakpoints]
-Bp0=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.342.2" 0 0 0 0 "" 0 ""
-Bp1=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.300.3" 0 0 0 0 "" 0 ""
+Bp0=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.345.2" 0 0 0 0 "" 0 ""
+Bp1=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.303.3" 0 0 0 0 "" 0 ""
 Count=2
 [ChipconEmu]
 Stop timers on halt=0

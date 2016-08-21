@@ -10,6 +10,7 @@
  * INCLUDES
  */
 #include "OSAL.h"
+#include "OSAL_Memory.h"
 #include "AF.h"
 #include "ZDApp.h"
 #include "ZDObject.h"
@@ -137,9 +138,13 @@ void zusbAppInit( byte task_id ){
  *
  * @return  none
  */
+  uint16 osal_heap_block_cnt( void );
 UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 	(void)task_id;  // Intentionally unreferenced parameter
+	UINT16 result=0;
 	 
+	int16 blocks =  osal_heap_block_cnt();
+		
 	if ( events & SYS_EVENT_MSG ) {
 		osal_event_hdr_t * hdrEvent = (osal_event_hdr_t *) osal_msg_receive( zusbTaskId );
 		switch(hdrEvent->event){
@@ -166,25 +171,34 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 			break;
 		}
 		 osal_msg_deallocate( (uint8 *)hdrEvent );
-	    return (events ^ SYS_EVENT_MSG);
+	    result = (events ^ SYS_EVENT_MSG);
+		goto end;
 	}
 
 	if (events & USB_ANNUNCE_MSG){
 		requestAllDevices();
-		return (events ^ USB_ANNUNCE_MSG);
+		result =  (events ^ USB_ANNUNCE_MSG);
+		goto end;
 	}
 	
 	if (events & USB_ANNUNCE2_MSG){
 		requestAllDevices2(NULL);
-		return (events ^ USB_ANNUNCE2_MSG);
+		result =  (events ^ USB_ANNUNCE2_MSG);
+		goto end;
 	}
 	
 	if (events & ENDPOINT_REQUEST_MSG){
 		sendOneEndpointRequest();
-		return (events ^ ENDPOINT_REQUEST_MSG);
+		
+		result = (events ^ ENDPOINT_REQUEST_MSG);
+		goto end;
 	}
 	
-	return 0;
+end:
+	blocks = osal_heap_block_cnt()-blocks;
+	if (blocks != 0)
+		usbLog(0, "zusbProcessEvent process delta block: %d", blocks);
+	return result;
 }
 
 
