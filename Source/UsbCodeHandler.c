@@ -5,6 +5,8 @@
 #include "zigbee_requests.h"
 #include "UsbCodeHandler.h"
 
+
+
 /***********************************************************************************
 * @fn           ZigBeeInitUSB
 *
@@ -19,7 +21,7 @@ void ZigBeeInitUSB(void){
  	 usbfwInit();
 
 	// Initialize the USB interrupt handler with bit mask containing all processed USBIRQ events
-	usbirqInit(0xFFFF);
+	usbirqInit(USBIRQ_EVENT_SUSPEND | USBIRQ_EVENT_RESUME | USBIRQ_EVENT_RESET | USBIRQ_EVENT_SETUP | USBIRQ_EVENT_EP5IN | USBIRQ_EVENT_EP2OUT);
 
 	// Enable pullup on D+
 	HAL_USB_PULLUP_ENABLE();
@@ -120,10 +122,6 @@ void usbsrHookProcessEvent(uint8 event, uint8 index)
    }
 }
 
-// ************************ USB interrupt event processing *************************
-void usbirqHookProcessEvents(void)
-{
-    // Handle events that require immediate processing here
-}
+
 
 

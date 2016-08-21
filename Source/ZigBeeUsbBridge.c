@@ -21,11 +21,11 @@
 #include "zcl_functions.h"
 #include "TimerEvents.h"
 #include "UsbFunctions.h"
-#include "UsbMessageHandlers.h"
 #include "AddrMgr.h"
 
 #include "ZigBeeUsbBridge.h"
 #include "ZdoMessageHandlers.h"
+#include "UsbIrqHookProcessEvents.h"
 
 #if !defined( WIN32 )
   #include "OnBoard.h"
@@ -38,19 +38,12 @@
 #include "hal_uart.h"
 #include "stdio.h"
 #include "endpointRequestList.h"
-	 
 #include "DeviceManager.h"
-	 
 
-/*********************************************************************
- * MACROS
- */
 
-/*********************************************************************
- * CONSTANTS
- */
 #define DEVICE_VERSION     0
 #define FLAGS              0
+
 
 /*********************************************************************
  * LOCAL VARIABLES
@@ -58,7 +51,6 @@
 byte zusbTaskId;   // Task ID for internal task/event processing
                           // This variable will be received when
                           // zusbInit() is called.
-static zdoIncomingMsg_t * zdoMsg;
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -116,7 +108,7 @@ void zusbAppInit( byte task_id ){
 	zusbTaskId = task_id;
   
 	deviceManagerInit();
- 	ZigBeeInitUSB();
+ 
 	endpointRequestTaskId(zusbTaskId);
 	zclHA_Init( &simpleDesc );
   	// Register the Application to receive the unprocessed Foundation command/response messages
@@ -129,6 +121,7 @@ void zusbAppInit( byte task_id ){
 	ZDO_RegisterForZDOMsg( zusbTaskId, Active_EP_rsp);
 	ZDO_RegisterForZDOMsg( zusbTaskId, Simple_Desc_rsp);
 	
+	T1CTL=1;
 }
 
 /*********************************************************************
@@ -145,81 +138,45 @@ void zusbAppInit( byte task_id ){
  * @return  none
  */
 UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
-	struct ReqAttributeMsg * reqAttributeMsg;
-	afDataConfirm_t *afDataConfirm;
-
-	// Data Confirmation message fields
-	byte sentEP;
-	ZStatus_t sentStatus;
-	byte sentTransID;       // This should match the value sent
 	(void)task_id;  // Intentionally unreferenced parameter
-
+	 
 	if ( events & SYS_EVENT_MSG ) {
 		osal_event_hdr_t * hdrEvent = (osal_event_hdr_t *) osal_msg_receive( zusbTaskId );
-		switch (hdrEvent->event ){
-			case EVENT_ATTRIBUTE_VALUE:{
-				reqAttributeMsg  = (struct ReqAttributeMsg *)hdrEvent;
-				ZStatus_t result =  zcl_SendRead( 
-								ENDPOINT,
-								&reqAttributeMsg->afAddrType,
-								reqAttributeMsg->cluster,
-								&reqAttributeMsg->readCmd,
-								ZCL_FRAME_CLIENT_SERVER_DIR,
-								FALSE,
-								0);
-				
-				if (result != ZSuccess){
-					usbSendAttributeResponseMsgError(reqAttributeMsg, result);
-				}
-				}
-				break;
-			case ZCL_INCOMING_MSG:
-				// Incoming ZCL Foundation command/response messages
-				zclCoordinatort_ProcessZCLIncomingMsg( (zclIncomingMsg_t *)hdrEvent );
-				break;
-			case ZDO_CB_MSG:
-				zdoMsg =  (zdoIncomingMsg_t *)hdrEvent;
-				ZDOMessageHandlerFactory(zdoMsg->clusterID)(zdoMsg);
-				break;
-			case AF_DATA_CONFIRM_CMD:
-			  // This message is received as a confirmation of a data packet sent.
-			  // The status is of ZStatus_t type [defined in ZComDef.h]
-			  // The message fields are defined in AF.h
-				afDataConfirm = (afDataConfirm_t *)hdrEvent;
-				sentEP = afDataConfirm->endpoint;
-				sentStatus = afDataConfirm->hdr.status;
-				sentTransID = afDataConfirm->transID;
-				(void)sentEP;
-				(void)sentTransID;
-
-				// Action taken when confirmation is received.
-				if ( sentStatus != ZSuccess ) {
-					// The data wasn't delivered -- Do something
-				}
-				break;
-			case AF_INCOMING_MSG_CMD:
-				zusbMessageMSGCB((afIncomingMSGPacket_t *) hdrEvent );
-				break;
-			default:
-				break;
+		switch(hdrEvent->event){
+		case ZCL_INCOMING_MSG:
+			usbLog(0,"Incoming ZCL Foundation command/response messages");
+			zclCoordinatort_ProcessZCLIncomingMsg( (zclIncomingMsg_t *)hdrEvent );
+			break;
+		case ZDO_CB_MSG:{
+			zdoIncomingMsg_t * zdoMsg =  (zdoIncomingMsg_t *)hdrEvent;
+			usbLog(0,"Incoming ZDO message from %X for cluster %s ",zdoMsg->srcAddr.addr.shortAddr,clusterRequestToString(zdoMsg->clusterID));
+			ZDOMessageHandlerFactory(zdoMsg->clusterID)(zdoMsg);
+			}
+			break;
+		case AF_INCOMING_MSG_CMD:
+			zusbMessageMSGCB((afIncomingMSGPacket_t *) hdrEvent );
+			break;
+		case AF_DATA_CONFIRM_CMD:
+			break;
+		case EVENT_USB_ISR:
+			{
+			struct UsbISR * isr = (struct UsbISR*)hdrEvent;
+			isr->isr(hdrEvent);
+			}
+			break;
 		}
-		osal_msg_deallocate( (uint8 *)hdrEvent );
+		 osal_msg_deallocate( (uint8 *)hdrEvent );
 	    return (events ^ SYS_EVENT_MSG);
 	}
 
 	if (events & USB_ANNUNCE_MSG){
-		requestAllDevices(NULL);
+		requestAllDevices();
 		return (events ^ USB_ANNUNCE_MSG);
 	}
 	
 	if (events & USB_ANNUNCE2_MSG){
 		requestAllDevices2(NULL);
 		return (events ^ USB_ANNUNCE2_MSG);
-	}
- 
- 	if (events & SEND_FIFO_DATA){
-		sendFifo();
-		return (events ^ SEND_FIFO_DATA);
 	}
 	
 	if (events & ENDPOINT_REQUEST_MSG){

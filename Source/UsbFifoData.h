@@ -25,5 +25,6 @@ void usbFifoDataPush(const uint8 * data, uint8 len);
 void usbFifoDataPushWithType(uint8 type, const uint8 * data, uint8 len);
 struct UsbFifoData * getUsbFifoHead(void);
 void usbFifoPop(void);
+uint8 isFifoEmpty(void);
 
 #endif

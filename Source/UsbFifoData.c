@@ -11,13 +11,19 @@
 #include "UsbFifoData.h"
 #include "OSAL_Memory.h"
 #include "OSAL.h"
-
+#include "ioCC2530.h"
+#include "hal_usbdongle_cfg.h"
 
 static struct UsbFifoData * head=NULL;
 static struct UsbFifoData * last;
+static uint8 count=0;
 
 struct UsbFifoData * getUsbFifoHead(void) {
 	return head;
+}
+
+uint8 isFifoEmpty(void) {
+	return head == NULL;
 }
 
 void usbFifoDataPushWithType(uint8 type,const uint8 * data, uint8 len) {
@@ -42,6 +48,7 @@ void usbFifoDataPushWithType(uint8 type,const uint8 * data, uint8 len) {
 void usbFifoDataPush(const uint8 * data, uint8 len) {
 	struct UsbFifoData * element = osal_mem_alloc(sizeof(struct UsbFifoData) + len);
 	if (element == NULL){
+		HAL_TURN_ON_LED1();
 		return;
 	}
 	

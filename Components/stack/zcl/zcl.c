@@ -42,6 +42,7 @@
  */
 #include "ZComDef.h"
 #include "AF.h"
+#include "UsbFunctions.h"
 
 #include "zcl.h"
 #include "zcl_general.h"
@@ -950,6 +951,8 @@ ZStatus_t zcl_SendRead( uint8 srcEP, afAddrType_t *dstAddr,
   uint8 *buf;
   uint8 *pBuf;
   ZStatus_t status;
+  
+  usbLog(0, "SendRead to %.04X:%.02X  cluster: %.04X numAttr: %d", dstAddr->addr.shortAddr, dstAddr->endPoint, clusterID,readCmd->numAttr); 
 
   dataLen = readCmd->numAttr * 2; // Attribute ID
 
@@ -1875,151 +1878,129 @@ ZStatus_t zcl_SendDiscoverAttrsExtRsp( uint8 srcEP, afAddrType_t *dstAddr,
  *
  * @return  zclProcMsgStatus_t
  */
-zclProcMsgStatus_t zcl_ProcessMessageMSG( afIncomingMSGPacket_t *pkt )
-{
-  endPointDesc_t *epDesc;
-  zclIncoming_t inMsg;
-  zclLibPlugin_t *pInPlugin;
-  zclDefaultRspCmd_t defautlRspCmd;
-  uint8 options;
-  uint8 securityEnable;
-  uint8 interPanMsg;
-  ZStatus_t status = ZFailure;
-  uint8 defaultResponseSent = FALSE;
+zclProcMsgStatus_t zcl_ProcessMessageMSG( afIncomingMSGPacket_t *pkt ){
+	endPointDesc_t *epDesc;
+	zclIncoming_t inMsg;
+	zclLibPlugin_t *pInPlugin;
+	zclDefaultRspCmd_t defautlRspCmd;
+	uint8 options;
+	uint8 securityEnable;
+	uint8 interPanMsg;
+	ZStatus_t status = ZFailure;
+	uint8 defaultResponseSent = FALSE;
 
-  if ( pkt->cmd.DataLength == 0 )
-  {
-    return ( ZCL_PROC_INVALID );   // Error, ignore the message
-  }
+	usbLog(0, "zcl_ProcessMessageMSG");
+	if ( pkt->cmd.DataLength == 0 ) {
+		return ( ZCL_PROC_INVALID );   // Error, ignore the message
+	}
 
-  // Initialize
-  rawAFMsg = (afIncomingMSGPacket_t *)pkt;
-  inMsg.msg = pkt;
-  inMsg.attrCmd = NULL;
-  inMsg.pData = NULL;
-  inMsg.pDataLen = 0;
+	// Initialize
+	rawAFMsg = (afIncomingMSGPacket_t *)pkt;
+	inMsg.msg = pkt;
+	inMsg.attrCmd = NULL;
+	inMsg.pData = NULL;
+	inMsg.pDataLen = 0;
 
-  inMsg.pData = zclParseHdr( &(inMsg.hdr), pkt->cmd.Data );
-  inMsg.pDataLen = pkt->cmd.DataLength;
-  inMsg.pDataLen -= (uint16)(inMsg.pData - pkt->cmd.Data);
+	inMsg.pData = zclParseHdr( &(inMsg.hdr), pkt->cmd.Data );
+	inMsg.pDataLen = pkt->cmd.DataLength;
+	inMsg.pDataLen -= (uint16)(inMsg.pData - pkt->cmd.Data);
 
-  // Temporary workaround to allow callback functions access to the 
-  // transaction sequence number.  Callback functions will call 
-  // zcl_getParsedTransSeqNum() to retrieve this number.
-  savedZCLTransSeqNum = inMsg.hdr.transSeqNum;
+	// Temporary workaround to allow callback functions access to the 
+	// transaction sequence number.  Callback functions will call 
+	// zcl_getParsedTransSeqNum() to retrieve this number.
+	savedZCLTransSeqNum = inMsg.hdr.transSeqNum;
   
-  // Find the wanted endpoint
-  epDesc = afFindEndPointDesc( pkt->endPoint );
-  if ( epDesc == NULL )
-  {
-    rawAFMsg = NULL;
-    return ( ZCL_PROC_EP_NOT_FOUND );   // Error, ignore the message
-  }
+	
+	// Find the wanted endpoint
+	epDesc = afFindEndPointDesc( pkt->endPoint );
+	if ( epDesc == NULL ) {
+		usbLog(0, "endpoint not found: %d",pkt->endPoint );
+		rawAFMsg = NULL;
+		return ( ZCL_PROC_EP_NOT_FOUND );   // Error, ignore the message
+	}
 
-  if ( ( epDesc->simpleDesc == NULL ) ||
-       ( zcl_DeviceOperational( pkt->endPoint, pkt->clusterId, inMsg.hdr.fc.type,
-                                inMsg.hdr.commandID, epDesc->simpleDesc->AppProfId ) == FALSE ) )
-  {
-    rawAFMsg = NULL;
-    return ( ZCL_PROC_NOT_OPERATIONAL ); // Error, ignore the message
-  }
+	if ( ( epDesc->simpleDesc == NULL ) ||  ( zcl_DeviceOperational( pkt->endPoint, pkt->clusterId, inMsg.hdr.fc.type,  inMsg.hdr.commandID, epDesc->simpleDesc->AppProfId ) == FALSE ) ) {
+		rawAFMsg = NULL;
+		return ( ZCL_PROC_NOT_OPERATIONAL ); // Error, ignore the message
+	}
 
 #if defined ( INTER_PAN )
-  if ( StubAPS_InterPan( pkt->srcAddr.panId, pkt->srcAddr.endPoint ) )
-  {
-    // No foundation command is supported thru Inter-PAN communication.
-    // But the Light Link cluster uses a different Frame Control format
-    // for it's Inter-PAN messages, where the messages could be confused
-    // with the foundation commands.
-    if ( zcl_ProfileCmd( inMsg.hdr.fc.type ) )
-    {
-      rawAFMsg = NULL;
-      return ( ZCL_PROC_INTERPAN_FOUNDATION_CMD );
-    }
+	if ( StubAPS_InterPan( pkt->srcAddr.panId, pkt->srcAddr.endPoint ) ){
+	// No foundation command is supported thru Inter-PAN communication.
+	// But the Light Link cluster uses a different Frame Control format
+	// for it's Inter-PAN messages, where the messages could be confused
+	// with the foundation commands.
+	if ( zcl_ProfileCmd( inMsg.hdr.fc.type ) ){
+		rawAFMsg = NULL;
+		return ( ZCL_PROC_INTERPAN_FOUNDATION_CMD );
+	}
 
-    interPanMsg = TRUE;
-    options = AF_TX_OPTIONS_NONE;
-  }
-  else
+	interPanMsg = TRUE;
+	options = AF_TX_OPTIONS_NONE;
+	} else
 #endif
-  {
-    interPanMsg = FALSE;
-    options = zclGetClusterOption( pkt->endPoint, pkt->clusterId );
-  }
+	{
+		interPanMsg = FALSE;
+		options = zclGetClusterOption( pkt->endPoint, pkt->clusterId );
+	}
 
-  // Find the appropriate plugin
-  pInPlugin = zclFindPlugin( pkt->clusterId, epDesc->simpleDesc->AppProfId );
+ 	 // Find the appropriate plugin
+ 	 pInPlugin = zclFindPlugin( pkt->clusterId, epDesc->simpleDesc->AppProfId );
 
   // Local and remote Security options must match except for Default Response command
-  if ( ( pInPlugin != NULL ) && !zcl_DefaultRspCmd( inMsg.hdr ) )
-  {
-    securityEnable = ( options & AF_EN_SECURITY ) ? TRUE : FALSE;
+	if ( ( pInPlugin != NULL ) && !zcl_DefaultRspCmd( inMsg.hdr ) )	{
+		securityEnable = ( options & AF_EN_SECURITY ) ? TRUE : FALSE;
 
-    // Make sure that Clusters specifically defined to use security are received secure,
-    // any other cluster that wants to use APS security will be allowed
-    if ( ( securityEnable == TRUE ) && ( pkt->SecurityUse == FALSE ) )
-    {
-      if ( UNICAST_MSG( inMsg.msg ) )
-      {
-        // Send a Default Response command back with no Application Link Key security
-        zclSetSecurityOption( pkt->endPoint, pkt->clusterId, FALSE );
+		// Make sure that Clusters specifically defined to use security are received secure, any other cluster that wants to use APS security will be allowed
+		if ( ( securityEnable == TRUE ) && ( pkt->SecurityUse == FALSE ) ){
+			if ( UNICAST_MSG( inMsg.msg ) ){
+				// Send a Default Response command back with no Application Link Key security
+				zclSetSecurityOption( pkt->endPoint, pkt->clusterId, FALSE );
 
-        defautlRspCmd.statusCode = status;
-        defautlRspCmd.commandID = inMsg.hdr.commandID;
-        zcl_SendDefaultRspCmd( inMsg.msg->endPoint, &(inMsg.msg->srcAddr),
-                               inMsg.msg->clusterId, &defautlRspCmd,
-                               !inMsg.hdr.fc.direction, true,
-                               inMsg.hdr.manuCode, inMsg.hdr.transSeqNum );
+				defautlRspCmd.statusCode = status;
+				defautlRspCmd.commandID = inMsg.hdr.commandID;
+				zcl_SendDefaultRspCmd( inMsg.msg->endPoint, &(inMsg.msg->srcAddr), inMsg.msg->clusterId, &defautlRspCmd,  !inMsg.hdr.fc.direction, true,   inMsg.hdr.manuCode, inMsg.hdr.transSeqNum );
+				zclSetSecurityOption( pkt->endPoint, pkt->clusterId, TRUE );
+			}
 
-        zclSetSecurityOption( pkt->endPoint, pkt->clusterId, TRUE );
-      }
+			rawAFMsg = NULL;
+			return ( ZCL_PROC_NOT_SECURE );   // Error, ignore the message
+		}
+	}
 
-      rawAFMsg = NULL;
-      return ( ZCL_PROC_NOT_SECURE );   // Error, ignore the message
-    }
-  }
+	// Is this a foundation type message
+	if ( !interPanMsg && zcl_ProfileCmd( inMsg.hdr.fc.type ) ) {
+    	if ( inMsg.hdr.fc.manuSpecific ) {
+			// We don't support any manufacturer specific command
+			status = ZCL_STATUS_UNSUP_MANU_GENERAL_COMMAND;
+    	} else if ( ( inMsg.hdr.commandID <= ZCL_CMD_MAX ) && ( zclCmdTable[inMsg.hdr.commandID].pfnParseInProfile != NULL ) ) {
+			usbLog(0,"arrived a foundation message: %d", inMsg.hdr.commandID);
+			zclParseCmd_t parseCmd;
 
-  // Is this a foundation type message
-  if ( !interPanMsg && zcl_ProfileCmd( inMsg.hdr.fc.type ) )
-  {
-    if ( inMsg.hdr.fc.manuSpecific )
-    {
-      // We don't support any manufacturer specific command
-      status = ZCL_STATUS_UNSUP_MANU_GENERAL_COMMAND;
-    }
-    else if ( ( inMsg.hdr.commandID <= ZCL_CMD_MAX ) &&
-              ( zclCmdTable[inMsg.hdr.commandID].pfnParseInProfile != NULL ) )
-    {
-      zclParseCmd_t parseCmd;
+			parseCmd.endpoint = pkt->endPoint;
+			parseCmd.dataLen = inMsg.pDataLen;
+			parseCmd.pData = inMsg.pData;
 
-      parseCmd.endpoint = pkt->endPoint;
-      parseCmd.dataLen = inMsg.pDataLen;
-      parseCmd.pData = inMsg.pData;
+			// Parse the command, remember that the return value is a pointer to allocated memory
+			inMsg.attrCmd = zclParseCmd( inMsg.hdr.commandID, &parseCmd );
+			if ( (inMsg.attrCmd != NULL) && (zclCmdTable[inMsg.hdr.commandID].pfnProcessInProfile != NULL) ){
+				// Process the command
+				if ( zclProcessCmd( inMsg.hdr.commandID, &inMsg ) == FALSE ){
+				  // Couldn't find attribute in the table.
+				}
+			}
 
-      // Parse the command, remember that the return value is a pointer to allocated memory
-      inMsg.attrCmd = zclParseCmd( inMsg.hdr.commandID, &parseCmd );
-      if ( (inMsg.attrCmd != NULL) && (zclCmdTable[inMsg.hdr.commandID].pfnProcessInProfile != NULL) )
-      {
-        // Process the command
-        if ( zclProcessCmd( inMsg.hdr.commandID, &inMsg ) == FALSE )
-        {
-          // Couldn't find attribute in the table.
-        }
-      }
+			// Free the buffer
+			if ( inMsg.attrCmd ){
+				zcl_mem_free( inMsg.attrCmd );
+			}
 
-      // Free the buffer
-      if ( inMsg.attrCmd )
-      {
-        zcl_mem_free( inMsg.attrCmd );
-      }
+			if ( CMD_HAS_RSP( inMsg.hdr.commandID ) ){
+				rawAFMsg = NULL;
+				return ( ZCL_PROC_SUCCESS ); // We're done
+			}
 
-      if ( CMD_HAS_RSP( inMsg.hdr.commandID ) )
-      {
-        rawAFMsg = NULL;
-        return ( ZCL_PROC_SUCCESS ); // We're done
-      }
-
-      status = ZSuccess;
+			status = ZSuccess;
     }
     else
     {
@@ -3289,6 +3270,7 @@ static void *zclParseInReadRspCmd( zclParseCmd_t *pCmd )
   uint16 dataLen = 0;
   uint16 attrDataLen;
 
+  usbLog(0,"zclParseInReadRspCmd");
   // find out the number of attributes and the length of attribute data
   while ( pBuf < ( pCmd->pData + pCmd->dataLen ) )
   {
@@ -4106,6 +4088,7 @@ static uint8 zclProcessInReadCmd( zclIncoming_t *pInMsg )
 
   readCmd = (zclReadCmd_t *)pInMsg->attrCmd;
 
+  usbLog(0, "zclProcessInReadCmd: attributes=%d", readCmd->numAttr);
   // calculate the length of the response status record
   len = sizeof( zclReadRspCmd_t ) + (readCmd->numAttr * sizeof( zclReadRspStatus_t ));
 

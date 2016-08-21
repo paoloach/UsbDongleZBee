@@ -164,11 +164,11 @@
         <option>
           <name>Output variant</name>
           <version>1</version>
-          <state>4</state>
+          <state>3</state>
         </option>
         <option>
           <name>Output description</name>
-          <state>No float, no field width, no precision.</state>
+          <state>No float.</state>
         </option>
         <option>
           <name>GeneralEnableMisra</name>
@@ -287,6 +287,7 @@
         <option>
           <name>CCDefines</name>
           <state>SECURE=0</state>
+          <state>OSALMEM_METRICS</state>
           <state>REFLECTOR</state>
           <state>xPOWER_SAVE</state>
           <state>HAL_KEY=0</state>
@@ -1156,10 +1157,10 @@
         <name>$PROJ_DIR$\..\Source\UsbFunctions.h</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\Source\UsbMessageHandlers.c</name>
+        <name>$PROJ_DIR$\..\Source\UsbIrqHookProcessEvents.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\..\Source\UsbMessageHandlers.h</name>
+        <name>$PROJ_DIR$\..\Source\UsbIrqHookProcessEvents.h</name>
       </file>
       <file>
         <name>$PROJ_DIR$\..\Source\zcl_functions.c</name>

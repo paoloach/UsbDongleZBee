@@ -11,18 +11,21 @@
  */
 
 #include "osal.h"
+#include "AddrMgr.h"
 #include "OSAL_Memory.h"
 #include "UsbFunctions.h"
 #include "usb_framework.h"
 #include "usb_interrupt.h"
 #include "usb_suspend.h"
 #include "zcl.h"
+#include "string.h"
+#include "stdio.h"
 
-#include "UsbMessageHandlers.h"
 #include "hal_usbdongle_cfg.h"
 #include "TimerEvents.h"
 #include "UsbFifoData.h"
 #include "DeviceManager.h"
+#include "OSAL_Memory.h"
  
 
 
@@ -87,20 +90,30 @@ struct ReadAttributeResponseErrorMsg {
 	uint8  zStatus;
 	uint8  attrCount;
 	uint16 attrID[];
-	
+};
+
+struct ActiveEPReqErrorMsg {
+	struct GenericDataMsg generticDataMsg;
+	uint16 networkAddr;
+	uint8  errorCode;
+};
+
+struct InfoMessage {
+	struct GenericDataMsg generticDataMsg;
+	uint16 nwkAddr;
 };
 
 
 /*********************************************************************
  * MACROS
  */
-#define ANNUNCE_SEND_TIMEOUT   1000     // Every 100 ms
-#define SEND_FIFO_DATA_TIME   1000     // Every 100 ms
+#define ANNUNCE_SEND_TIMEOUT   100     // Every 100 ms
+#define SEND_FIFO_DATA_TIME   100     // Every 100 ms
 
 /*********************************************************************
  * LOCAL TYPEDEFS
  */
-typedef void (*UsbMessageHandler)(uint8 * data);
+
 
 
 
@@ -109,23 +122,21 @@ typedef void (*UsbMessageHandler)(uint8 * data);
  */
 static uint8 * tmpData;
 struct AnnunceDataMsg annunceDataMsg;
-static uint8 oldEndpoint;
-static uint8 length;
-static uint8 rxData[BULK_SIZE_OUT];
 static uint16 * dest;
 static uint16 * maxDest;
 static uint16 * src;
 static uint8 len;
 static struct SimpleDescrMsg * simpleDescrMsg;
-static int  currentDeviceElement=0;
-static AddrMgrEntry_t addrMgrEntry;
+uint16  currentDeviceElement=0;
 static struct UsbFifoData * usbFifoHead;
+
+
 
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
-static bool usbOutProcess(void);
-static UsbMessageHandler parseDataOut(void);
+
+//static bool usbOutProcess(void);
 
 /*********************************************************************
  * PUBLIC FUNCTIONS
@@ -156,10 +167,9 @@ void Usb_ProcessLoop(void) {
     	USBIRQ_CLEAR_EVENTS(USBIRQ_EVENT_RESUME);
 	}
 	
-	if (usbOutProcess()){
-		parseDataOut()(rxData);
-	}
 }
+
+
 
 /***********************************************************************************
 * @brief        send data from fifo to usb, if possibile
@@ -169,18 +179,19 @@ void Usb_ProcessLoop(void) {
 * @return       none
 */
 void sendFifo(void) {
+	HAL_DISABLE_INTERRUPTS();
 	usbFifoHead = getUsbFifoHead();
 	if (usbFifoHead != NULL && USBFW_IN_ENDPOINT_DISARMED()){
-		oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-		USBFW_SELECT_ENDPOINT(3);
+		uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+		USBFW_SELECT_ENDPOINT(5);
 
 		tmpData =    usbFifoHead->data;
 		len = usbFifoHead->dataLen;
-		if (len > MAX_DATE_SIZE_3){
-			len = MAX_DATE_SIZE_3;
+		if (len > MAX_DATE_SIZE_5){
+			len = MAX_DATE_SIZE_5;
 		}
 		do {
-       		USBF3 = *tmpData;
+       		USBF5 = *tmpData;
 			tmpData++;
 			len--;
    		} while (len>0);
@@ -188,127 +199,65 @@ void sendFifo(void) {
 		usbFifoPop();
  		USBFW_SELECT_ENDPOINT(oldEndpoint);	
 	}
-	if (getUsbFifoHead() != NULL){
-		osal_start_timerEx( zusbTaskId, SEND_FIFO_DATA, SEND_FIFO_DATA_TIME );
-	}
-	
+	HAL_ENABLE_INTERRUPTS();
 }
 
 /**
 * send a chunk of data to the host at endpoint 2
 */
 void sendUsb(const uint8 * data, uint8 len) {
-	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-	USBFW_SELECT_ENDPOINT(3);
-
-	// If the IN endpoint is ready to accept data.
-	if (len > MAX_DATE_SIZE_3){
-		len = MAX_DATE_SIZE_3;
-	}
-	if (USBFW_IN_ENDPOINT_DISARMED()) {
-		do {
-        	USBF3 = *data;
-			data++;
-			len--;
-      	} while (len>0);
-      	USBFW_ARM_IN_ENDPOINT();
+	HAL_DISABLE_INTERRUPTS();
+	if (isFifoEmpty()){
+		uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+		USBFW_SELECT_ENDPOINT(5);
+		
+		// If the IN endpoint is ready to accept data.
+		if (len > MAX_DATE_SIZE_5){
+			len = MAX_DATE_SIZE_5;
+		}
+		if (USBFW_IN_ENDPOINT_DISARMED()) {
+			do {
+				USBF5 = *data;
+				data++;
+				len--;
+			} while (len>0);
+			USBFW_ARM_IN_ENDPOINT();
+		} else {
+			usbFifoDataPush(data, len);
+		}
+		USBFW_SELECT_ENDPOINT(oldEndpoint);
 	} else {
 		usbFifoDataPush(data, len);
-		osal_start_timerEx( zusbTaskId, SEND_FIFO_DATA, SEND_FIFO_DATA_TIME );
 	}
- 	USBFW_SELECT_ENDPOINT(oldEndpoint);
+	HAL_ENABLE_INTERRUPTS();
 }
 
-void usbSendDataChunk( uint8 type, uint8 * data, uint8 len){
-	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-	USBFW_SELECT_ENDPOINT(3);
-	if (len > (MAX_DATE_SIZE_3-1)){
-		len = (MAX_DATE_SIZE_3-1);
-	}
+void usbLog(uint16 nwkAddr, const char * msg, ...) {
+	char * buffer = (char *) osal_mem_alloc(128);
+	char * iter = buffer;
+	va_list args;
+	va_start (args, format);
+	vsprintf (buffer, msg, args);
+	va_end (args);
 	
-	if (USBFW_IN_ENDPOINT_DISARMED()) {
-		USBF3 = type;
-		do {
-        	USBF3 = *data;
-			data++;
-			len--;
-      	} while (len>0);
-      	USBFW_ARM_IN_ENDPOINT();
-	} else {
-		usbFifoDataPushWithType(type, data, len);
+	int8 len = strlen(buffer)+1;
+	if (len > ENDPOINT_LOG_SIZE-3){
+		len = ENDPOINT_LOG_SIZE-3;
 	}
-	
-	USBFW_SELECT_ENDPOINT(oldEndpoint);
-}
 
-/***********************************************************************************
-* @fn           usbOutProcess
-*
-* @brief        Read bulk data from endpoint 2.
-*
-* @param        none
-*
-* @return       true if there is some data
-*/
-
-static bool usbOutProcess(void){
-	bool result = false;
-    // If new packet is ready in USB FIFO
-	HAL_DISABLE_INTERRUPTS();
-
-    oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-    USBFW_SELECT_ENDPOINT(2);
-
-    if (USBFW_OUT_ENDPOINT_DISARMED() ) {
-        // Get length of USB packet, this operation must not be interrupted.
-        length = USBFW_GET_OUT_ENDPOINT_COUNT_LOW();
-        length+= USBFW_GET_OUT_ENDPOINT_COUNT_HIGH() >> 8;
-        // Read from USB FIFO
-		usbfwReadFifo(&USBF2, BULK_SIZE_OUT, rxData);
-        USBFW_ARM_OUT_ENDPOINT();
-		result = true;
-    }
+	uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(ENDPOINT_LOG);
+		
+	while(!USBFW_IN_ENDPOINT_DISARMED());
+	USB_LOG_FIFO = INFO_MESSAGE;
+	USB_LOG_FIFO = ((char *)(&nwkAddr))[0];
+	USB_LOG_FIFO = ((char *)(&nwkAddr))[1];
+	for(; len >= 0; len --){
+		USB_LOG_FIFO = *iter;
+		iter++;
+	}
+	USBFW_ARM_IN_ENDPOINT();
     USBFW_SELECT_ENDPOINT(oldEndpoint);
-    HAL_ENABLE_INTERRUPTS();
-	return result;
-}
-
-/***********************************************************************************
-* @fn           parseDataOut
-*
-* @brief        Parse the usb out message and return the right pointer function
-*
-* @param        none
-*
-* @return       the pointer function
-*/
-UsbMessageHandler parseDataOut(void) {
-	switch(rxData[0]){
-	case REQ_SIMPLE_DESC:
-		return usbReqSimpleDesc;
-	case REQ_RESET:
-		return reset;
-	case REQ_ACTIVE_EP:
-		HAL_TOGGLE_LED1();
-		return usbReqActiveEndpoint;
-	case REQ_ATTRIBUTE_VALUES:
-		return usbReqAttributeValue;
-	case SEND_CMD:
-		return usbSendCmdCluster;
-	case WRITE_ATTRIBUTE_VALUE:
-		return usbWriteAttributeValue;
-	case REQ_ALL_NODES:
-		currentDeviceElement=  0;
-		return requestAllDevices;
-	case REQ_BIND_TABLE:
-		return usbReqBindTable;
-	case REQ_ADD_BIND_TABLE_ENTRY:
-		return usbAddBindTable;
-	case REQ_REMOVE_BIND_TABLE_ENTRY:
-		return usbRemoveBindTable;
-	default:
-		return usbNullMessage;
-	}
 }
 
 /**
@@ -325,46 +274,59 @@ void usbSendAnnunce(ZDO_DeviceAnnce_t * device) {
 
 void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc) {
 	simpleDescrMsg = osal_mem_alloc(sizeof(struct  SimpleDescrMsg));
-	
-	simpleDescrMsg->genericDataMsg.msgCode= SIMPLE_DESC;
-	simpleDescrMsg->nwkAddr = simpleDesc->nwkAddr;
-	simpleDescrMsg->endpoint = simpleDesc->simpleDesc.EndPoint;
-	simpleDescrMsg->appProfId = simpleDesc->simpleDesc.AppProfId;
-	simpleDescrMsg->appDeviceId = simpleDesc->simpleDesc.AppDeviceId;
-	simpleDescrMsg->appDevVer = simpleDesc->simpleDesc.AppDevVer;
-	simpleDescrMsg->numInClusters = simpleDesc->simpleDesc.AppNumInClusters;
-	simpleDescrMsg->numOutClusters = simpleDesc->simpleDesc.AppNumOutClusters;
-	dest = simpleDescrMsg->clustersList;
-	maxDest = dest + MAX_CLUSTERS;
-	src = simpleDesc->simpleDesc.pAppInClusterList;
-	len = simpleDesc->simpleDesc.AppNumInClusters;
-	while (len>0 && dest < maxDest){
-		*dest++ = *src++;
-		len--;
+	if (simpleDescrMsg != NULL){
+		simpleDescrMsg->genericDataMsg.msgCode= SIMPLE_DESC;
+		simpleDescrMsg->nwkAddr = simpleDesc->nwkAddr;
+		simpleDescrMsg->endpoint = simpleDesc->simpleDesc.EndPoint;
+		simpleDescrMsg->appProfId = simpleDesc->simpleDesc.AppProfId;
+		simpleDescrMsg->appDeviceId = simpleDesc->simpleDesc.AppDeviceId;
+		simpleDescrMsg->appDevVer = simpleDesc->simpleDesc.AppDevVer;
+		simpleDescrMsg->numInClusters = simpleDesc->simpleDesc.AppNumInClusters;
+		simpleDescrMsg->numOutClusters = simpleDesc->simpleDesc.AppNumOutClusters;
+		dest = simpleDescrMsg->clustersList;
+		maxDest = dest + MAX_CLUSTERS;
+		src = simpleDesc->simpleDesc.pAppInClusterList;
+		len = simpleDesc->simpleDesc.AppNumInClusters;
+		while (len>0 && dest < maxDest){
+			*dest++ = *src++;
+			len--;
+		}
+		src = simpleDesc->simpleDesc.pAppOutClusterList;
+		len = simpleDesc->simpleDesc.AppNumOutClusters;
+		while (len>0&& dest < maxDest){
+			*dest++ = *src++;
+			len--;
+		}
+		sendUsb((uint8 *)simpleDescrMsg, sizeof(struct SimpleDescrMsg));
+		osal_mem_free(simpleDescrMsg);
 	}
-	src = simpleDesc->simpleDesc.pAppOutClusterList;
-	len = simpleDesc->simpleDesc.AppNumOutClusters;
-	while (len>0&& dest < maxDest){
-		*dest++ = *src++;
-		len--;
-	}
-	sendUsb((uint8 *)simpleDescrMsg, sizeof(struct SimpleDescrMsg));
-	osal_mem_free(simpleDescrMsg);
 }
 
 void usbSendAttributeResponseMsgError(struct ReqAttributeMsg * attributesValue, ZStatus_t status){
 	struct ReadAttributeResponseErrorMsg  * response;
 	
-	uint8 dataSize = sizeof(struct ReadAttributeResponseErrorMsg)+2*attributesValue->readCmd.numAttr;
+	uint8 dataSize = sizeof(struct ReadAttributeResponseErrorMsg)+2*attributesValue->numAttr;
 	response = osal_mem_alloc(dataSize);
-	response->clusterId = attributesValue->cluster;
-	response->endpoint = attributesValue->afAddrType.endPoint;
-	response->networkAddr = attributesValue->afAddrType.addr.shortAddr;
-	response->zStatus = status;
-	response->attrCount = attributesValue->readCmd.numAttr;
-	response->generticDataMsg.msgCode = ATTRIBUTE_VALUE_REQ_ERROR;
-	osal_memcpy(response->attrID, attributesValue->readCmd.attrID, 2*attributesValue->readCmd.numAttr);
-	sendUsb((const uint8 *)&response,dataSize);
+	if (response != NULL){
+		response->clusterId = attributesValue->cluster;
+		response->endpoint = attributesValue->afAddrType.endPoint;
+		response->networkAddr = attributesValue->afAddrType.addr.shortAddr;
+		response->zStatus = status;
+		response->attrCount = attributesValue->numAttr;
+		response->generticDataMsg.msgCode = ATTRIBUTE_VALUE_REQ_ERROR;
+		osal_memcpy(response->attrID, attributesValue->attrID, 2*attributesValue->numAttr);
+		sendUsb((const uint8 *)response,dataSize);
+		
+		osal_mem_free(response);
+	}
+}
+
+void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode) {
+	struct ActiveEPReqErrorMsg  errorMsg;
+	errorMsg.generticDataMsg.msgCode = ACTIVE_EP_REQ_ERROR;
+	errorMsg.networkAddr = nwkAddr;
+	errorMsg.errorCode = errorCode;
+	sendUsb( (const uint8 *)&errorMsg, sizeof(struct ActiveEPReqErrorMsg ) );
 }
 
 void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address ) {
@@ -376,11 +338,13 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 	uint8  i;
 	uint8	 attrSize;
 	uint8  tmpNumAttributes=0;
-	uint16 tmpDataSize;
+	uint16 tmpDataSize=0;
+	usbLog(0,"usbSendAttributeResponseMsg");
+	
 	for (; iter < iterEnd; iter++){
 		attrSize = zclGetAttrDataLength(iter->dataType, iter->data);
 		tmpDataSize =dataSize +attrSize+sizeof(struct AttributeResponse);
-		if (tmpDataSize > BULK_SIZE_IN){
+		if (tmpDataSize > MAX_DATE_SIZE_5){
 			if (tmpNumAttributes>0){
 				struct ReadAttributeResponseMsg * response = osal_mem_alloc(dataSize);
 				if (response == NULL){
@@ -438,9 +402,10 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 
 void requestAllDevices2(uint8 * notUsed){
 	if (currentDeviceElement < DEVICE_MANAGER_TABLE_SIZE){
-		while(1){
+		while(currentDeviceElement < DEVICE_MANAGER_TABLE_SIZE){
 			ZDO_DeviceAnnce_t * device = deviceEntryGet(currentDeviceElement);
 			if (device != NULL){
+				usbLog(0,"Find device %X from device Entry",device->nwkAddr );
 				annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
 				annunceDataMsg.nwkAddr = device->nwkAddr;
 				sAddrExtCmp(annunceDataMsg.extAddr, device->extAddr);
@@ -449,12 +414,6 @@ void requestAllDevices2(uint8 * notUsed){
 				osal_start_timerEx( zusbTaskId, USB_ANNUNCE2_MSG, ANNUNCE_SEND_TIMEOUT );
 				currentDeviceElement++;
 				return;
-			} else{
-				if (currentDeviceElement >=NWK_MAX_ADDRESSES){
-					currentDeviceElement=0;
-					osal_stop_timerEx(zusbTaskId, USB_ANNUNCE2_MSG);
-					return;
-				}
 			}
 			currentDeviceElement++;
 		}
@@ -464,13 +423,16 @@ void requestAllDevices2(uint8 * notUsed){
 	}
 }
 
-void requestAllDevices(uint8 * notUsed){
+void requestAllDevices(void){
+	usbLog(0,"Request all devices");
 	if (currentDeviceElement < NWK_MAX_ADDRESSES){
 		while(1){
+			AddrMgrEntry_t addrMgrEntry; 
 			addrMgrEntry.index=currentDeviceElement;
 			addrMgrEntry.user=ADDRMGR_USER_DEFAULT;
 			
-			if (AddrMgrEntryGet(&addrMgrEntry)==TRUE){
+			if (AddrMgrEntryGet(&addrMgrEntry)==TRUE && addrMgrEntry.nwkAddr != 0xFFFF){
+				usbLog(0, "find device %X into addrMgr", addrMgrEntry.nwkAddr);
 				annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
 				annunceDataMsg.nwkAddr = addrMgrEntry.nwkAddr;
 				osal_memcpy(annunceDataMsg.extAddr, addrMgrEntry.extAddr, Z_EXTADDR_LEN);
@@ -481,8 +443,6 @@ void requestAllDevices(uint8 * notUsed){
 				return;
 			} else{
 				if (currentDeviceElement >=NWK_MAX_ADDRESSES){
-					currentDeviceElement=0;
-					osal_stop_timerEx(zusbTaskId, USB_ANNUNCE_MSG);
 					currentDeviceElement=0;
 					osal_start_timerEx( zusbTaskId, USB_ANNUNCE2_MSG, ANNUNCE_SEND_TIMEOUT );
 					return;
@@ -495,4 +455,72 @@ void requestAllDevices(uint8 * notUsed){
 		currentDeviceElement =0;
 	}
 }
+
+
+
+char * clusterRequestToString(uint16 clusterId){
+	switch(clusterId){
+	case NWK_addr_req:
+		return "NWKAddrReq";
+	case IEEE_addr_req:
+		return "IEEEAddrReq";
+	case Simple_Desc_req:
+		return "SimpleDecReq";
+	case Active_EP_req:
+		return "ActiveEpReq";
+	case Device_annce:
+		return "Device_annce";
+	case End_Device_Timeout_req:
+		return "End_Device_Timeout_req";
+	case End_Device_Bind_req:
+		return "End_Device_Bind_req";
+	case Bind_req:
+		return "Bind_req";
+	case Unbind_req:
+		return "Unbind_req";
+		
+	case NWK_addr_rsp:
+		return "NWK_addr_rsp";
+	case IEEE_addr_rsp:
+		return "IEEE_addr_rsp";
+	case Simple_Desc_rsp:
+		return "Simple_Desc_rsp";
+	case End_Device_Timeout_rsp:
+		return "End_Device_Timeout_rsp";
+	case Bind_rsp:
+		return "Bind_rsp";
+	case End_Device_Bind_rsp:
+		return "End_Device_Bind_rsp";
+	case Unbind_rsp:
+		return "Unbind_rsp";
+	case Mgmt_Bind_req:
+		return "MgmtBindReq";
+	case Mgmt_Bind_rsp:
+		return "MgmtBindRsp";
+	default:
+		return convertUint16ToHex(clusterId);
+	};
+}
+
+static char convertDigit(uint8 digit){
+	digit &= 0x0F;
+	if (digit <= 9)
+		return '0' + digit;
+	else
+		return 'A' + digit;
+}
+
+char * convertUint16ToHex(uint16 num) {
+	static char unknownValueBuffer[5];
+	unknownValueBuffer[4] = 0;
+	unknownValueBuffer[3] = convertDigit(num & 0x000F);
+	num = num >> 4;
+	unknownValueBuffer[2] = convertDigit(num & 0x000F);
+	num = num >> 4;
+	unknownValueBuffer[1] = convertDigit(num & 0x000F);
+	num = num >> 4;
+	unknownValueBuffer[0] = convertDigit(num & 0x000F);
+	return unknownValueBuffer;
+}
+
 

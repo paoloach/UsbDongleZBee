@@ -60,17 +60,22 @@ ZDOMessageHandler ZDOMessageHandlerFactory(cId_t clusterId) {
 
 
 static void notHandledMessage(zdoIncomingMsg_t * msg) {
+	usbLog(0,"handling unknown cluster");
 }
 
 
 static void annunceMessage(zdoIncomingMsg_t * msg) {
+	usbLog(0,"handling annunce message");
+	
 	ZDO_ParseDeviceAnnce( msg, &device );
 	addDevice(&device);
 	usbSendAnnunce(&device);
+
 }
 
 
 static void activeEndpointResponseMessage(zdoIncomingMsg_t * msg) {
+	usbLog(0,"handling active EP rsp");
 	ZDO_ActiveEndpointRsp_t * EPList = ZDO_ParseEPListRsp(msg );
 	for (int i=0; i < EPList->cnt; i++){
 		addEndpointRequest( EPList->nwkAddr, EPList->epList[i], 0);
@@ -81,6 +86,7 @@ static void activeEndpointResponseMessage(zdoIncomingMsg_t * msg) {
 
 static void simpleDecriptorMessage(zdoIncomingMsg_t * msg) {
 	ZDO_ParseSimpleDescRsp( msg, &simpleDesc );
+	usbLog(0,"handling simple desc rsp");
 	if (simpleDesc.status == ZDP_SUCCESS){
 		usbSendSimpleDescriptor(&simpleDesc);
 	}
@@ -89,6 +95,9 @@ static void simpleDecriptorMessage(zdoIncomingMsg_t * msg) {
 static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
 	uint8 valid;
 	struct BindTableResponseEntry *list;
+	
+	usbLog(0,"handling Mgmt bind rsp");
+	
 	msg =  inMsg->asdu;
 	if (*msg++ == ZSuccess ){
 		msg++;
@@ -99,8 +108,8 @@ static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
 	}
 
 	dataSize = len * sizeof( struct BindTableResponseEntry );
-	if (dataSize > (BULK_SIZE_IN -2)){
-		dataSize = (BULK_SIZE_IN-2) -(BULK_SIZE_IN-2)%sizeof( struct BindTableResponseEntry );
+	if (dataSize > (MAX_DATE_SIZE_5 -2)){
+		dataSize = (MAX_DATE_SIZE_5-2) -(MAX_DATE_SIZE_5-2)%sizeof( struct BindTableResponseEntry );
 	}
 	bindTableResponse = (struct BindTableResponse *)osal_mem_alloc((sizeof ( struct BindTableResponse ) + dataSize ));
 	if (bindTableResponse==NULL){
@@ -133,7 +142,7 @@ static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
 			bindTableResponse->elementSize++;
 			list++;
 			dataSize += sizeof(struct BindTableResponseEntry );
-			if (dataSize + sizeof(struct BindTableResponseEntry) > BULK_SIZE_IN){
+			if (dataSize + sizeof(struct BindTableResponseEntry) > MAX_DATE_SIZE_5){
 				sendUsb((uint8 *)bindTableResponse, dataSize);
 				dataSize =sizeof(struct BindTableResponse );
 				list = bindTableResponse->list;

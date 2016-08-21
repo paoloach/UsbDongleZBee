@@ -12,16 +12,17 @@
 
 #include "ZDObject.h"
 #include "zcl.h"
-#include "UsbMessageHandlers.h"
+#include "UsbIrqHookProcessEvents.h"
 
-#define BULK_SIZE_OUT 64
-#define BULK_SIZE_IN 64
-#define MAX_DATE_SIZE_3 128
+#define MAX_DATE_SIZE_5 64
 #define MAX_DATE_SIZE_2 64
+
+#define ENDPOINT_LOG 4
+#define USB_LOG_FIFO USBF4
+#define ENDPOINT_LOG_SIZE 64
 
 #define Z_EXTADDR_LEN   8
 #define ANNUNCE 0x01
-#define REQ_SIMPLE_DESC 0x02
 #define SIMPLE_DESC 0x03
 #define REQ_ACTIVE_EP 0x04
 #define ACTIVE_EP 0x05
@@ -36,7 +37,10 @@
 #define REQ_ADD_BIND_TABLE_ENTRY 0x0E
 #define REQ_REMOVE_BIND_TABLE_ENTRY 0x0F
 #define REQ_RESET				    0x10
+#define INFO_MESSAGE				0x20
 #define ATTRIBUTE_VALUE_REQ_ERROR	0x40
+#define ACTIVE_EP_REQ_ERROR			0x41
+
 
 struct GenericDataMsg{
 	uint8 msgCode;
@@ -56,23 +60,22 @@ struct BindTableResponse {
 	struct BindTableResponseEntry list[];
 };
 
-struct ReqAttributeValueMsg {
-	uint8       messageCode;
-	uint16      nwkAddr;
-	uint8       endpoint;
-	uint16		cluster;
-	uint8		numAttributes;
-	uint16      attributeId[];
-};
+typedef void (*UsbMessageHandler)(uint8 * data);
 
 void Usb_ProcessLoop(void);
+void handleUsbOut(void);
+UsbMessageHandler parseDataOut(void);
+void requestAllDevices(void);
 void usbSendAnnunce(ZDO_DeviceAnnce_t * device);
 void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc);
 void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address );
 void usbSendAttributeResponseMsgError(struct ReqAttributeMsg *, ZStatus_t status);
 void sendUsb(const uint8 * data, uint8 len);
 void sendFifo(void);
-void usbSendDataChunk( uint8 type, uint8 * data, uint8 len);
-
+void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode);
+void usbLog(uint16 nwkId, const char * msg,...);
+char * clusterRequestToString(uint16 clusterId);
+char * convertUint16ToHex(uint16 num);
+void requestAllDevices2(uint8 * notUsed);
 
 #endif

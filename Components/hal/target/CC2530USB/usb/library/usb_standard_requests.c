@@ -403,7 +403,7 @@ static void ConfigureEndpoints(USB_INTERFACE_DESCRIPTOR __code *pInterface)
 
          // For IN endpoints...
          if (pEndpoint->bEndpointAddress & 0x80) {
-
+		 
             // Clear data toggle, and flush twice (due to double buffering)
             USBCSIL = USBCSIL_CLR_DATA_TOG | USBCSIL_FLUSH_PACKET;
             USBCSIL = USBCSIL_FLUSH_PACKET;

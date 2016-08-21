@@ -50,6 +50,7 @@
 #include "ZDProfile.h"
 #include "aps_frag.h"
 #include "rtg.h"
+#include "UsbFunctions.h"
 
 #if defined ( MT_AF_CB_FUNC )
   #include "MT_AF.h"
@@ -356,114 +357,101 @@ void afReflectError( uint8 dstAddrMode, uint16 dstAddr, uint8 endPoint, uint8 tr
  *
  * @return      none
  */
-void afIncomingData( aps_FrameFormat_t *aff, zAddrType_t *SrcAddress, uint16 SrcPanId,
-                     NLDE_Signal_t *sig, uint8 nwkSeqNum, uint8 SecurityUse,
-                     uint32 timestamp, uint8 radius )
-{
-  endPointDesc_t *epDesc = NULL;
-  epList_t *pList = epList;
-#if !defined ( APS_NO_GROUPS )
-  uint8 grpEp = APS_GROUPS_EP_NOT_FOUND;
-#endif
+void afIncomingData( aps_FrameFormat_t *aff, zAddrType_t *SrcAddress, uint16 SrcPanId, NLDE_Signal_t *sig, uint8 nwkSeqNum, uint8 SecurityUse, uint32 timestamp, uint8 radius ){
+	endPointDesc_t *epDesc = NULL;
+	epList_t *pList = epList;
+	#if !defined ( APS_NO_GROUPS )
+ 	  uint8 grpEp = APS_GROUPS_EP_NOT_FOUND;
+	#endif
+ 
+	//usbLog(0, "Received APS: frame control %X, destEP: %.02X, clusterId: %.02X, srcEP: %.02X",  aff->FrmCtrl, aff->DstEndPoint, aff->ClusterID, aff->SrcEndPoint);
+	switch(SrcAddress->addrMode){
+	case Addr16Bit:
+		//usbLog(0, "Received APS from %.04X srcEP:%.02X dstEP:%.02X, cluster:%.02X", SrcAddress->addr.shortAddr,aff->SrcEndPoint,aff->DstEndPoint,aff->ClusterID);
+		usbLog(0, "Received APS from %.04X", SrcAddress->addr.shortAddr);
+		break;
+	case Addr64Bit:
+		usbLog(0, "Received APS from %.02X:%.02X:%.02X:%.02X:%.02X:%.02X:%.02X:%.02X  srcEP:%.02X dstEP:%.02X, cluster:%.02X", SrcAddress->addr.extAddr[0],SrcAddress->addr.extAddr[1],SrcAddress->addr.extAddr[2],SrcAddress->addr.extAddr[3],SrcAddress->addr.extAddr[4],SrcAddress->addr.extAddr[5],SrcAddress->addr.extAddr[6],SrcAddress->addr.extAddr[7],aff->SrcEndPoint,aff->DstEndPoint,aff->ClusterID);
+		break;
+	default:
+		usbLog(0, "Received APS unknow address mode: %02X", SrcAddress->addrMode);
+	}
+	
+ 	if ( ((aff->FrmCtrl & APS_DELIVERYMODE_MASK) == APS_FC_DM_GROUP) )  {
+		#if !defined ( APS_NO_GROUPS )
+		// Find the first endpoint for this group
+		  grpEp = aps_FindGroupForEndpoint( aff->GroupID, APS_GROUPS_FIND_FIRST );
+		  if ( grpEp == APS_GROUPS_EP_NOT_FOUND )
+		  	return;   // No endpoint found
 
-  if ( ((aff->FrmCtrl & APS_DELIVERYMODE_MASK) == APS_FC_DM_GROUP) )
-  {
-#if !defined ( APS_NO_GROUPS )
-    // Find the first endpoint for this group
-    grpEp = aps_FindGroupForEndpoint( aff->GroupID, APS_GROUPS_FIND_FIRST );
-    if ( grpEp == APS_GROUPS_EP_NOT_FOUND )
-      return;   // No endpoint found
+		  epDesc = afFindEndPointDesc( grpEp );
+		  if ( epDesc == NULL )
+			return;   // Endpoint descriptor not found
 
-    epDesc = afFindEndPointDesc( grpEp );
-    if ( epDesc == NULL )
-      return;   // Endpoint descriptor not found
+		  pList = afFindEndPointDescList( epDesc->endPoint );
+		#else
+		  return; // Not supported
+		#endif
+	} else if ( aff->DstEndPoint == AF_BROADCAST_ENDPOINT ) {
+		// Set the list
+		if ( pList != NULL ){
+			epDesc = pList->epDesc;
+		}
+	} else if ( (epDesc = afFindEndPointDesc( aff->DstEndPoint )) ) {
+    	pList = afFindEndPointDescList( epDesc->endPoint );
+	}
 
-    pList = afFindEndPointDescList( epDesc->endPoint );
-#else
-    return; // Not supported
-#endif
-  }
-  else if ( aff->DstEndPoint == AF_BROADCAST_ENDPOINT )
-  {
-    // Set the list
-    if ( pList != NULL )
-    {
-      epDesc = pList->epDesc;
+	while ( epDesc ) {
+ 		uint16 epProfileID = 0xFFFE;  // Invalid Profile ID
+
+		if ( pList->pfnDescCB ){
+			uint16 *pID = (uint16 *)(pList->pfnDescCB(AF_DESCRIPTOR_PROFILE_ID, epDesc->endPoint ));
+			if ( pID ){
+				epProfileID = *pID;
+				osal_mem_free( pID );
+			}
+		} else if ( epDesc->simpleDesc ){
+			epProfileID = epDesc->simpleDesc->AppProfId;
+		}
+
+		// First part of verification is to make sure that:
+		// the local Endpoint ProfileID matches the received ProfileID OR
+		// the message is specifically send to ZDO (this excludes the broadcast endpoint) OR
+		// if the Wildcard ProfileID is received the message should not be sent to ZDO endpoint
+		if ( (aff->ProfileID == epProfileID) || ((epDesc->endPoint == ZDO_EP) && (aff->ProfileID == ZDO_PROFILE_ID)) || ((epDesc->endPoint != ZDO_EP) && ( aff->ProfileID == ZDO_WILDCARD_PROFILE_ID )) ) {
+			// Save original endpoint
+			uint8 endpoint = aff->DstEndPoint;
+			// overwrite with descriptor's endpoint
+			aff->DstEndPoint = epDesc->endPoint;
+			afBuildMSGIncoming( aff, epDesc, SrcAddress, SrcPanId, sig, nwkSeqNum, SecurityUse, timestamp, radius );
+			// Restore with original endpoint
+			aff->DstEndPoint = endpoint;
+		}
+
+		if ( ((aff->FrmCtrl & APS_DELIVERYMODE_MASK) == APS_FC_DM_GROUP) )  {
+		#if !defined ( APS_NO_GROUPS )
+		  // Find the next endpoint for this group
+			grpEp = aps_FindGroupForEndpoint( aff->GroupID, grpEp );
+			if ( grpEp == APS_GROUPS_EP_NOT_FOUND )
+				return;   // No endpoint found
+
+			epDesc = afFindEndPointDesc( grpEp );
+			if ( epDesc == NULL )
+				return;   // Endpoint descriptor not found
+
+			 pList = afFindEndPointDescList( epDesc->endPoint );
+		#else
+			 return;
+		#endif
+		} else if ( aff->DstEndPoint == AF_BROADCAST_ENDPOINT ) {
+			pList = pList->nextDesc;
+			if ( pList )
+				epDesc = pList->epDesc;
+			else
+				epDesc = NULL;
+		} else
+		  epDesc = NULL;
     }
-  }
-  else if ( (epDesc = afFindEndPointDesc( aff->DstEndPoint )) )
-  {
-    pList = afFindEndPointDescList( epDesc->endPoint );
-  }
-
-  while ( epDesc )
-  {
-    uint16 epProfileID = 0xFFFE;  // Invalid Profile ID
-
-    if ( pList->pfnDescCB )
-    {
-      uint16 *pID = (uint16 *)(pList->pfnDescCB(
-                                 AF_DESCRIPTOR_PROFILE_ID, epDesc->endPoint ));
-      if ( pID )
-      {
-        epProfileID = *pID;
-        osal_mem_free( pID );
-      }
-    }
-    else if ( epDesc->simpleDesc )
-    {
-      epProfileID = epDesc->simpleDesc->AppProfId;
-    }
-
-    // First part of verification is to make sure that:
-    // the local Endpoint ProfileID matches the received ProfileID OR
-    // the message is specifically send to ZDO (this excludes the broadcast endpoint) OR
-    // if the Wildcard ProfileID is received the message should not be sent to ZDO endpoint
-    if ( (aff->ProfileID == epProfileID) ||
-         ((epDesc->endPoint == ZDO_EP) && (aff->ProfileID == ZDO_PROFILE_ID)) ||
-         ((epDesc->endPoint != ZDO_EP) && ( aff->ProfileID == ZDO_WILDCARD_PROFILE_ID )) )
-    {
-      // Save original endpoint
-      uint8 endpoint = aff->DstEndPoint;
-
-      // overwrite with descriptor's endpoint
-      aff->DstEndPoint = epDesc->endPoint;
-
-      afBuildMSGIncoming( aff, epDesc, SrcAddress, SrcPanId, sig,
-                         nwkSeqNum, SecurityUse, timestamp, radius );
-
-      // Restore with original endpoint
-      aff->DstEndPoint = endpoint;
-    }
-
-    if ( ((aff->FrmCtrl & APS_DELIVERYMODE_MASK) == APS_FC_DM_GROUP) )
-    {
-#if !defined ( APS_NO_GROUPS )
-      // Find the next endpoint for this group
-      grpEp = aps_FindGroupForEndpoint( aff->GroupID, grpEp );
-      if ( grpEp == APS_GROUPS_EP_NOT_FOUND )
-        return;   // No endpoint found
-
-      epDesc = afFindEndPointDesc( grpEp );
-      if ( epDesc == NULL )
-        return;   // Endpoint descriptor not found
-
-      pList = afFindEndPointDescList( epDesc->endPoint );
-#else
-      return;
-#endif
-    }
-    else if ( aff->DstEndPoint == AF_BROADCAST_ENDPOINT )
-    {
-      pList = pList->nextDesc;
-      if ( pList )
-        epDesc = pList->epDesc;
-      else
-        epDesc = NULL;
-    }
-    else
-      epDesc = NULL;
-  }
 }
 
 /*********************************************************************
@@ -569,6 +557,8 @@ afStatus_t AF_DataRequest( afAddrType_t *dstAddr, endPointDesc_t *srcEP,
   APSDE_DataReq_t req;
   afDataReqMTU_t mtu;
   epList_t *pList;
+  
+  usbLog(0,"AF_DataRequest: dstAddr=%X, EP=%d", dstAddr->addr.shortAddr, dstAddr->endPoint);
 
   // Verify source end point
   if ( srcEP == NULL )
@@ -750,6 +740,7 @@ afStatus_t AF_DataRequest( afAddrType_t *dstAddr, endPointDesc_t *srcEP,
     }
     else
     {
+		usbLog(0, "APSDE_DataReq to %.04X:%.02X  cluster: %s len: %d", req.dstAddr.addr.shortAddr, req.dstEP, clusterRequestToString(req.clusterID),req.asduLen); 
       stat = APSDE_DataReq( &req );
     }
   }

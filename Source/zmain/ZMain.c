@@ -55,6 +55,7 @@
 #include "OSAL_Nv.h"
 #include "ZComDef.h"
 #include "ZMAC.h"
+#include "UsbCodeHandler.h"
 
 #include "AddrMgr.h"
 
@@ -135,14 +136,11 @@ int main( void )
 
   // Final board initialization
   InitBoard( OB_READY );
+  
+  	ZigBeeInitUSB();
 
   // Display information about this device
   zmain_dev_info();
-
-  /* Display the device info on the LCD */
-#ifdef LCD_SUPPORTED
-  zmain_lcd_init();
-#endif
 
 #ifdef WDT_IN_PM1
   /* If WDT is used, this is a good place to enable it. */
