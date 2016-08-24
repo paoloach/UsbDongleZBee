@@ -74,6 +74,7 @@ void sendUsb(const uint8 * data, uint8 len);
 void sendFifo(void);
 void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode);
 void usbLog(uint16 nwkId, const char * msg,...);
+void usbLogString(const char * msg);
 char * clusterRequestToString(uint16 clusterId);
 char * convertUint16ToHex(uint16 num);
 void requestAllDevices2(uint8 * notUsed);

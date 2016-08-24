@@ -952,8 +952,7 @@ ZStatus_t zcl_SendRead( uint8 srcEP, afAddrType_t *dstAddr,
   uint8 *pBuf;
   ZStatus_t status;
   
-  usbLog(0, "SendRead to %.04X:%.02X  cluster: %.04X numAttr: %d", dstAddr->addr.shortAddr, dstAddr->endPoint, clusterID,readCmd->numAttr); 
-
+  
   dataLen = readCmd->numAttr * 2; // Attribute ID
 
   buf = zcl_mem_alloc( dataLen );
@@ -1889,7 +1888,6 @@ zclProcMsgStatus_t zcl_ProcessMessageMSG( afIncomingMSGPacket_t *pkt ){
 	ZStatus_t status = ZFailure;
 	uint8 defaultResponseSent = FALSE;
 
-	usbLog(0, "zcl_ProcessMessageMSG");
 	if ( pkt->cmd.DataLength == 0 ) {
 		return ( ZCL_PROC_INVALID );   // Error, ignore the message
 	}
@@ -1914,7 +1912,6 @@ zclProcMsgStatus_t zcl_ProcessMessageMSG( afIncomingMSGPacket_t *pkt ){
 	// Find the wanted endpoint
 	epDesc = afFindEndPointDesc( pkt->endPoint );
 	if ( epDesc == NULL ) {
-		usbLog(0, "endpoint not found: %d",pkt->endPoint );
 		rawAFMsg = NULL;
 		return ( ZCL_PROC_EP_NOT_FOUND );   // Error, ignore the message
 	}
@@ -1974,7 +1971,6 @@ zclProcMsgStatus_t zcl_ProcessMessageMSG( afIncomingMSGPacket_t *pkt ){
 			// We don't support any manufacturer specific command
 			status = ZCL_STATUS_UNSUP_MANU_GENERAL_COMMAND;
     	} else if ( ( inMsg.hdr.commandID <= ZCL_CMD_MAX ) && ( zclCmdTable[inMsg.hdr.commandID].pfnParseInProfile != NULL ) ) {
-			usbLog(0,"arrived a foundation message: %d", inMsg.hdr.commandID);
 			zclParseCmd_t parseCmd;
 
 			parseCmd.endpoint = pkt->endPoint;
@@ -3269,8 +3265,6 @@ static void *zclParseInReadRspCmd( zclParseCmd_t *pCmd )
   uint8 hdrLen;
   uint16 dataLen = 0;
   uint16 attrDataLen;
-
-  usbLog(0,"zclParseInReadRspCmd");
   // find out the number of attributes and the length of attribute data
   while ( pBuf < ( pCmd->pData + pCmd->dataLen ) )
   {
@@ -3296,7 +3290,8 @@ static void *zclParseInReadRspCmd( zclParseCmd_t *pCmd )
       dataLen += attrDataLen;
     }
   }
-
+  
+  
   // calculate the length of the response header
   hdrLen = sizeof( zclReadRspCmd_t ) + ( numAttr * sizeof( zclReadRspStatus_t ) );
 
@@ -4088,7 +4083,6 @@ static uint8 zclProcessInReadCmd( zclIncoming_t *pInMsg )
 
   readCmd = (zclReadCmd_t *)pInMsg->attrCmd;
 
-  usbLog(0, "zclProcessInReadCmd: attributes=%d", readCmd->numAttr);
   // calculate the length of the response status record
   len = sizeof( zclReadRspCmd_t ) + (readCmd->numAttr * sizeof( zclReadRspStatus_t ));
 

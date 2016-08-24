@@ -143,13 +143,12 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 	(void)task_id;  // Intentionally unreferenced parameter
 	UINT16 result=0;
 	 
-	int16 blocks =  osal_heap_block_cnt();
 		
 	if ( events & SYS_EVENT_MSG ) {
 		osal_event_hdr_t * hdrEvent = (osal_event_hdr_t *) osal_msg_receive( zusbTaskId );
 		switch(hdrEvent->event){
 		case ZCL_INCOMING_MSG:
-			usbLog(0,"Incoming ZCL Foundation command/response messages");
+			usbLogString("Incoming ZCL Foundation command/response messages");
 			zclCoordinatort_ProcessZCLIncomingMsg( (zclIncomingMsg_t *)hdrEvent );
 			break;
 		case ZDO_CB_MSG:{
@@ -170,7 +169,7 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 			}
 			break;
 		}
-		 osal_msg_deallocate( (uint8 *)hdrEvent );
+		osal_msg_deallocate( (uint8 *)hdrEvent );
 	    result = (events ^ SYS_EVENT_MSG);
 		goto end;
 	}
@@ -195,9 +194,6 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 	}
 	
 end:
-	blocks = osal_heap_block_cnt()-blocks;
-	if (blocks != 0)
-		usbLog(0, "zusbProcessEvent process delta block: %d", blocks);
 	return result;
 }
 

@@ -47,6 +47,7 @@
 #include "hal_board.h"
 #include "hal_defs.h"
 #include "hal_mcu.h"
+#include "UsbFunctions.h"
 
 #if (defined HAL_MCU_AVR) || (defined HAL_MCU_CC2430) || (defined HAL_MCU_CC2530) || \
     (defined HAL_MCU_CC2533) || (defined HAL_MCU_MSP430)
@@ -74,14 +75,7 @@ void halAssertHazardLights(void);
  */
 void halAssertHandler(void)
 {
-  /* execute code that handles asserts */
-#ifdef ASSERT_RESET
-  HAL_SYSTEM_RESET();
-#elif !defined ASSERT_WHILE
-  halAssertHazardLights();
-#else
-  while(1);
-#endif
+	usbLogString("---------HAL ASSERT ---------");
 }
 
 #if !defined ASSERT_WHILE

@@ -53,6 +53,7 @@
 #include "OSAL_Memory.h"
 #include "OSAL_PwrMgr.h"
 #include "OSAL_Clock.h"
+#include "UsbFunctions.h"
 
 #include "OnBoard.h"
 
@@ -1153,6 +1154,7 @@ void osal_run_system( void )
   Hal_ProcessPoll();
   Usb_ProcessLoop();
 
+ 
   do {
     if (tasksEvents[idx])  // Task is highest priority that is ready.
     {
@@ -1164,7 +1166,7 @@ void osal_run_system( void )
   {
     uint16 events;
     halIntState_t intState;
-
+	
     HAL_ENTER_CRITICAL_SECTION(intState);
     events = tasksEvents[idx];
     tasksEvents[idx] = 0;  // Clear the Events for this task.

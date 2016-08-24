@@ -234,6 +234,10 @@ void sendUsb(const uint8 * data, uint8 len) {
 
 void usbLog(uint16 nwkAddr, const char * msg, ...) {
 	char * buffer = (char *) osal_mem_alloc(128);
+	if (buffer == NULL){
+		return;
+	
+	}
 	char * iter = buffer;
 	va_list args;
 	va_start (args, format);
@@ -262,6 +266,25 @@ void usbLog(uint16 nwkAddr, const char * msg, ...) {
     USBFW_SELECT_ENDPOINT(oldEndpoint);
 	osal_mem_free(buffer);
 }
+
+void usbLogString( const char * msg) {
+	const char * iter = msg;
+
+	uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(ENDPOINT_LOG);
+		
+	while(!USBFW_IN_ENDPOINT_DISARMED());
+	USB_LOG_FIFO = INFO_MESSAGE;
+	USB_LOG_FIFO =  osal_heap_block_cnt();
+	USB_LOG_FIFO = 0;
+	while(*iter != 0){
+		USB_LOG_FIFO = *iter;
+		iter++;
+	}
+	USBFW_ARM_IN_ENDPOINT();
+    USBFW_SELECT_ENDPOINT(oldEndpoint);
+}
+
 
 /**
   send to the usb host the network address of the device annunced
@@ -342,7 +365,7 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 	uint8	 attrSize;
 	uint8  tmpNumAttributes=0;
 	uint16 tmpDataSize=0;
-	usbLog(0,"usbSendAttributeResponseMsg");
+	usbLogString("usbSendAttributeResponseMsg");
 	
 	for (; iter < iterEnd; iter++){
 		attrSize = zclGetAttrDataLength(iter->dataType, iter->data);
@@ -401,6 +424,9 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 	}
 	sendUsb((const uint8 *)response, dataSize);
 	osal_mem_free(response);
+	
+	
+	usbLogString("usbSendAttributeResponseMsg end");
 }
 
 void requestAllDevices2(uint8 * notUsed){
