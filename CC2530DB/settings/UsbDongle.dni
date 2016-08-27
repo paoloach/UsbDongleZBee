@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=-1946205234
+Checksum=420851795
 [CallStack]
 ShowArgs=0
 [Disassembly]
@@ -70,9 +70,22 @@ Fmt0={W}0:0x6210	1	0
 Fmt1={W}0:0x6212	1	0
 Fmt2={W}0:0x6215	1	0
 Fmt3={W}0:IEN2	1	0
-Fmt4={W}0:len	3	0
-Fmt5={W}0:length	3	0
-Fmt6={W}0:usbcif	1	0
+Fmt4={W}0:UInt	3	0
+Fmt5={W}0:len	3	0
+Fmt6={W}0:length	3	0
+Fmt7={W}0:usbcif	1	0
+Fmt8={W}0:value	4	0
+[Breakpoints]
+Bp0=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.454.3" 0 0 0 0 "" 0 ""
+Bp1=_ "STD_CODE" "{$PROJ_DIR$\..\Components\hal\common\hal_assert.c}.121.1" 0 0 0 0 "" 0 ""
+Bp2=_ "STD_CODE" "{$PROJ_DIR$\..\Components\osal\common\OSAL.c}.1159.5" 0 0 0 0 "" 0 ""
+Bp3=_ "STD_CODE" "LogicalCode:0x7FFA" 0 0 0 0 "" 0 ""
+Bp4=_ "STD_CODE" "{$PROJ_DIR$\..\Source\ZigBeeUsbBridge.c}.193.3" 0 0 0 0 "" 0 ""
+Bp5=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.268.2" 0 0 0 0 "" 0 ""
+Count=6
+[ChipconEmu]
+Stop timers on halt=0
+Leave target running=1
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""
@@ -80,15 +93,6 @@ Category=_ 0
 [TermIOLog]
 LoggingEnabled=_ 0
 LogFile=_ ""
-[Breakpoints]
-Bp0=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.322.3" 0 0 0 0 "" 0 ""
-Bp1=_ "STD_CODE" "{$PROJ_DIR$\..\Components\hal\common\hal_assert.c}.121.1" 0 0 0 0 "" 0 ""
-Bp2=_ "STD_CODE" "{$PROJ_DIR$\..\Components\osal\common\OSAL.c}.1159.5" 0 0 0 0 "" 0 ""
-Bp3=_ "STD_CODE" "LogicalCode:0x7FFA" 0 0 0 0 "" 0 ""
-Count=4
-[ChipconEmu]
-Stop timers on halt=0
-Leave target running=1
 [Aliases]
 Count=0
 SuppressDialog=0

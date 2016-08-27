@@ -364,17 +364,17 @@ void afIncomingData( aps_FrameFormat_t *aff, zAddrType_t *SrcAddress, uint16 Src
  	  uint8 grpEp = APS_GROUPS_EP_NOT_FOUND;
 	#endif
  
-	//usbLog(0, "Received APS: frame control %X, destEP: %.02X, clusterId: %.02X, srcEP: %.02X",  aff->FrmCtrl, aff->DstEndPoint, aff->ClusterID, aff->SrcEndPoint);
+	//usbLog(0, "Received APS: frame control %X, destEP: %X, clusterId: %X, srcEP: %X",  aff->FrmCtrl, aff->DstEndPoint, aff->ClusterID, aff->SrcEndPoint);
 	switch(SrcAddress->addrMode){
 	case Addr16Bit:
-		//usbLog(0, "Received APS from %.04X srcEP:%.02X dstEP:%.02X, cluster:%.02X", SrcAddress->addr.shortAddr,aff->SrcEndPoint,aff->DstEndPoint,aff->ClusterID);
-		usbLog(0, "Received APS from %.04X", SrcAddress->addr.shortAddr);
+		//usbLog(0, "Received APS from %X srcEP:%X dstEP:%X, cluster:%X", SrcAddress->addr.shortAddr,aff->SrcEndPoint,aff->DstEndPoint,aff->ClusterID);
+		usbLog(0, "Received APS from %X", SrcAddress->addr.shortAddr);
 		break;
 	case Addr64Bit:
-		usbLog(0, "Received APS from %.02X:%.02X:%.02X:%.02X:%.02X:%.02X:%.02X:%.02X  srcEP:%.02X dstEP:%.02X, cluster:%.02X", SrcAddress->addr.extAddr[0],SrcAddress->addr.extAddr[1],SrcAddress->addr.extAddr[2],SrcAddress->addr.extAddr[3],SrcAddress->addr.extAddr[4],SrcAddress->addr.extAddr[5],SrcAddress->addr.extAddr[6],SrcAddress->addr.extAddr[7],aff->SrcEndPoint,aff->DstEndPoint,aff->ClusterID);
+		usbLog(0, "Received APS from %H  srcEP:%x dstEP:%x, cluster:%X", SrcAddress->addr.extAddr,aff->SrcEndPoint,aff->DstEndPoint,aff->ClusterID);
 		break;
 	default:
-		usbLog(0, "Received APS unknow address mode: %02X", SrcAddress->addrMode);
+		usbLog(0, "Received APS unknow address mode: %x", SrcAddress->addrMode);
 	}
 	
  	if ( ((aff->FrmCtrl & APS_DELIVERYMODE_MASK) == APS_FC_DM_GROUP) )  {
@@ -558,7 +558,7 @@ afStatus_t AF_DataRequest( afAddrType_t *dstAddr, endPointDesc_t *srcEP,
   afDataReqMTU_t mtu;
   epList_t *pList;
   
-  usbLog(0,"AF_DataRequest: dstAddr=%X, EP=%d", dstAddr->addr.shortAddr, dstAddr->endPoint);
+  usbLog(0,"AF_DataRequest: dstAddr=%X, EP=%x", dstAddr->addr.shortAddr, dstAddr->endPoint);
 
   // Verify source end point
   if ( srcEP == NULL )
@@ -740,7 +740,7 @@ afStatus_t AF_DataRequest( afAddrType_t *dstAddr, endPointDesc_t *srcEP,
     }
     else
     {
-	usbLog(0, "APSDE_DataReq to %.04X:%.02X  cluster: %s len: %d", req.dstAddr.addr.shortAddr, req.dstEP, clusterRequestToString(req.clusterID),req.asduLen); 
+	usbLog(0, "APSDE_DataReq to %X:%x  cluster: %s len: %d", req.dstAddr.addr.shortAddr, req.dstEP, clusterRequestToString(req.clusterID),req.asduLen); 
       stat = APSDE_DataReq( &req );
     usbLog(0, "APSDE_DataReq sent");
 	}

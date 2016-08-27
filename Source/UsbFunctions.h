@@ -38,8 +38,10 @@
 #define REQ_REMOVE_BIND_TABLE_ENTRY 0x0F
 #define REQ_RESET				    0x10
 #define INFO_MESSAGE				0x20
+#define ENABLE_INFO_MESSAGE			0x21
 #define ATTRIBUTE_VALUE_REQ_ERROR	0x40
 #define ACTIVE_EP_REQ_ERROR			0x41
+
 
 
 struct GenericDataMsg{

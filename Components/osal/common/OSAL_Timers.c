@@ -65,9 +65,9 @@ typedef union {
   uint8 time8[4];
 } osalTime_t;
 
-typedef struct
+typedef struct osalTimerRec
 {
-  void   *next;
+  struct osalTimerRec   *next;
   osalTime_t timeout;
   uint16 event_flag;
   uint8  task_id;

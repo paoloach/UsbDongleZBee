@@ -24,6 +24,7 @@
 
 extern byte zusbTaskId;
 extern uint16  currentDeviceElement;
+extern uint8  usbOn;
 
 struct ReqAttributeValueMsg {
 	uint16      nwkAddr;
@@ -88,6 +89,9 @@ void usbirqHookProcessEvents(void)
 			struct UsbISR * msg =NULL;
 			uint8 code = USBF2;
 			switch( code){
+			case ENABLE_INFO_MESSAGE:
+				usbOn=1;
+				break;
 			case REQ_RESET:
 					msg = (struct UsbISR *)osal_msg_allocate(sizeof(struct UsbISR) );
 					msg->msg.event = EVENT_USB_ISR;
@@ -272,7 +276,7 @@ void attributeValue(osal_event_hdr_t * hdrEvent){
 	ZStatus_t status;
 	struct ReqAttributeMsg * reqAttributeMsg  = (struct ReqAttributeMsg *)hdrEvent;
 
-	usbLog(0, "Send cmd ZCL_CMD_READ to %.04X:%.02X  cluster: %.04X numAttr: %d", reqAttributeMsg->afAddrType.addr.shortAddr, reqAttributeMsg->afAddrType.endPoint, reqAttributeMsg->cluster,reqAttributeMsg->numAttr); 
+	usbLog(0, "Send cmd ZCL_CMD_READ to %X:%x  cluster: %X numAttr: %d", reqAttributeMsg->afAddrType.addr.shortAddr, reqAttributeMsg->afAddrType.endPoint, reqAttributeMsg->cluster,reqAttributeMsg->numAttr); 
 
 	status = zcl_SendCommand( ENDPOINT, &reqAttributeMsg->afAddrType, reqAttributeMsg->cluster, ZCL_CMD_READ, FALSE, ZCL_FRAME_CLIENT_SERVER_DIR, FALSE, 0, 0,  reqAttributeMsg->numAttr * 2, (uint8 *)reqAttributeMsg->attrID );
 	if (status != ZSuccess){
@@ -299,7 +303,7 @@ void eventBindReq(osal_event_hdr_t * hdrEvent) {
 	uint8 first=0;
 	struct BindTableRequestMsg * msg = (struct BindTableRequestMsg *)hdrEvent;
 	
-	usbLog(0,"%u, Request bind table for %04X",msg->isr.time, msg->afAddrType.addr.shortAddr);
+	usbLog(0,"%u, Request bind table for %X",msg->isr.time, msg->afAddrType.addr.shortAddr);
 
 	ZDP_MgmtBindReq( &(msg->afAddrType),first, 0 );
 }

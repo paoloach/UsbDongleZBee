@@ -85,6 +85,8 @@ extern "C"
   * Setup efficient search for the first free block of heap.
   */
   void osal_mem_kick( void );
+  
+  void prindDebugInfo(void);
 
  /*
   * Allocate a block of memory.

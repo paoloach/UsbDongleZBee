@@ -16,5 +16,6 @@
 #define ENDPOINT_REQUEST_MSG		  0x0004
 #define SEND_FIFO_DATA				  0x0008
 #define USB_ANNUNCE2_MSG			  0x0010
+#define MEM_INFO					  0x0020
 #define EVENT_USB_ISR					0xE0
 

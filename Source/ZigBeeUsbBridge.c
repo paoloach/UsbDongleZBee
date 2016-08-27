@@ -123,6 +123,8 @@ void zusbAppInit( byte task_id ){
 	ZDO_RegisterForZDOMsg( zusbTaskId, Simple_Desc_rsp);
 	
 	T1CTL=1;
+	
+	osal_start_timerEx( zusbTaskId, MEM_INFO, 1000 );
 }
 
 /*********************************************************************
@@ -169,6 +171,7 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 			}
 			break;
 		}
+	
 		osal_msg_deallocate( (uint8 *)hdrEvent );
 	    result = (events ^ SYS_EVENT_MSG);
 		goto end;
@@ -183,6 +186,13 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 	if (events & USB_ANNUNCE2_MSG){
 		requestAllDevices2(NULL);
 		result =  (events ^ USB_ANNUNCE2_MSG);
+		goto end;
+	}
+	
+	if (events & MEM_INFO){
+		prindDebugInfo();
+		osal_start_timerEx( zusbTaskId, MEM_INFO, 10000 );
+		result =  (events ^ MEM_INFO);
 		goto end;
 	}
 	

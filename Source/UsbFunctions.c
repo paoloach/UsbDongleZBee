@@ -10,6 +10,7 @@
  * INCLUDES
  */
 
+#include "hal_defs.h"
 #include "osal.h"
 #include "AddrMgr.h"
 #include "OSAL_Memory.h"
@@ -129,6 +130,7 @@ static uint8 len;
 static struct SimpleDescrMsg * simpleDescrMsg;
 uint16  currentDeviceElement=0;
 static struct UsbFifoData * usbFifoHead;
+uint8  usbOn=0;
 
 
 
@@ -147,6 +149,7 @@ void Usb_ProcessLoop(void) {
 	if (USBIRQ_GET_EVENT_MASK() & USBIRQ_EVENT_RESET) {
 		USBIRQ_CLEAR_EVENTS(USBIRQ_EVENT_RESET);
 		usbfwResetHandler();
+		usbOn=0;
 	}
 
 	// Handle packets on EP0
@@ -159,6 +162,7 @@ void Usb_ProcessLoop(void) {
 	if (USBIRQ_GET_EVENT_MASK() & USBIRQ_EVENT_SUSPEND)  {
 		// Clear USB suspend interrupt
 		USBIRQ_CLEAR_EVENTS(USBIRQ_EVENT_SUSPEND);
+		usbOn=0;
 
 	    // Take the chip into PM1 until a USB resume is deteceted.
     	usbsuspEnter();
@@ -232,24 +236,31 @@ void sendUsb(const uint8 * data, uint8 len) {
 	HAL_ENABLE_INTERRUPTS();
 }
 
+static void displayInt(uint16 value);
+static void displayHex(uint16 value);
+static void displayHex8bit(uint8 value);
+
 void usbLog(uint16 nwkAddr, const char * msg, ...) {
-	char * buffer = (char *) osal_mem_alloc(128);
-	if (buffer == NULL){
+	if (usbOn==0){
 		return;
-	
 	}
-	char * iter = buffer;
-	va_list args;
-	va_start (args, format);
-	vsprintf (buffer, msg, args);
-	va_end (args);
+	const char * iter = msg;
+	uint8 count = 0;
+	int8  c;
+	
+	// Count arguments
+	while (*iter != 0){
+		if (*iter == '%'){
+			if (iter[1] == 'h' || iter[1] == 'H'){
+				count+=4;
+			} else {
+				count++;
+			}
+		}
+		iter++;
+	}
 	
 	nwkAddr = osal_heap_block_cnt();
-	
-	int8 len = strlen(buffer)+1;
-	if (len > ENDPOINT_LOG_SIZE-3){
-		len = ENDPOINT_LOG_SIZE-3;
-	}
 
 	uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
 	USBFW_SELECT_ENDPOINT(ENDPOINT_LOG);
@@ -258,16 +269,137 @@ void usbLog(uint16 nwkAddr, const char * msg, ...) {
 	USB_LOG_FIFO = INFO_MESSAGE;
 	USB_LOG_FIFO = ((char *)(&nwkAddr))[0];
 	USB_LOG_FIFO = ((char *)(&nwkAddr))[1];
-	for(; len >= 0; len --){
-		USB_LOG_FIFO = *iter;
-		iter++;
+	
+	iter = msg; 
+	if (count > 0){
+		int16	Int;
+		uint16  UInt;
+		uint8	byte;
+		const char * CChar  ;
+		va_list args;
+		va_start (args, count);
+		c = *iter;
+		while (c!= 0){
+			if (c == '%'){
+				iter++;
+				switch(*iter){
+					case 's':
+						CChar =  va_arg(args, const char * );
+						c= *CChar;
+						while (c != 0){
+							USB_LOG_FIFO = c;
+							CChar++;
+							c = *CChar;
+						}
+					break;
+					case 'd':
+					case 'D':{
+						Int = va_arg(args, int16 );
+						if (Int < 0){
+							USB_LOG_FIFO='-';
+							Int = -Int;
+						}
+						displayInt((uint16)Int);
+						}
+					break;
+					case 'h':
+					case 'H':
+						UInt = va_arg(args, unsigned short );
+						displayInt((uint16)UInt);
+						UInt = va_arg(args, unsigned short );
+						displayInt((uint16)UInt);
+						UInt = va_arg(args, unsigned short );
+						displayInt((uint16)UInt);
+						UInt = va_arg(args, unsigned short );
+						displayInt((uint16)UInt);
+						break;
+					case 'u':
+					case 'U':
+						UInt = va_arg(args, unsigned short );
+						displayInt((uint16)UInt);
+						break;
+					case 'x':
+						byte = va_arg(args, unsigned short );
+						displayHex8bit(byte);
+						break;
+					case 'X':
+						UInt = va_arg(args, unsigned short );
+						displayHex((uint16)UInt);
+						break;
+					default:
+						USB_LOG_FIFO='%';
+						USB_LOG_FIFO=c;
+				}
+			} else {
+				USB_LOG_FIFO = c;
+			}
+			iter++;
+			c=*iter;
+		}
+		va_end (args);
+	} else {
+		c=*iter;
+		while(c != 0){
+			USB_LOG_FIFO=c;
+			iter++;
+			c=*iter;
+		}
 	}
 	USBFW_ARM_IN_ENDPOINT();
     USBFW_SELECT_ENDPOINT(oldEndpoint);
-	osal_mem_free(buffer);
+}
+
+void displayHex8bit(uint8 value) {
+	uint8 digit = value >> 4;
+	USB_LOG_FIFO = (digit >= 10) ? ('A' + digit -10) : ('0' + digit);
+	digit = value && 0x0F;
+	USB_LOG_FIFO = (digit >= 10) ? ('A' + digit -10) : ('0' + digit);
+}
+
+void displayHex(uint16 value) {
+	uint8 digit = HI_UINT16(value) >> 4;
+	USB_LOG_FIFO = (digit >= 10) ? ('A' + digit -10) : ('0' + digit);
+	digit = HI_UINT16(value) & 0x0F;
+	USB_LOG_FIFO = (digit >= 10) ? ('A' + digit -10) : ('0' + digit);
+	digit = LO_UINT16(value) >> 4;
+	USB_LOG_FIFO = (digit >= 10) ? ('A' + digit -10) : ('0' + digit);
+	digit = LO_UINT16(value) & 0x0F;
+	USB_LOG_FIFO = (digit >= 10) ? ('A' + digit -10) : ('0' + digit);
+}
+
+void displayInt(uint16 value) {
+	uint8 th = value /10000;
+	uint8 show=0;
+	if (th > 0){
+		USB_LOG_FIFO = '0' + th;
+		value = value % 10000;
+		show=1;
+	}
+	th = value / 1000;
+	if (th > 0 || show){
+		USB_LOG_FIFO = '0' + th;
+		value = value % 1000;
+		show=1;
+	}
+	th = value / 100;
+	if (th > 0 || show){
+		USB_LOG_FIFO = '0' + th;
+		value = value % 100;
+		show=1;
+	}
+	th = value / 10;
+	if (th > 0 || show){
+		USB_LOG_FIFO = '0' + th;
+		value = value % 10;
+		
+	}
+	USB_LOG_FIFO = '0' + value;
 }
 
 void usbLogString( const char * msg) {
+	if (usbOn==0){
+		return;
+	}
 	const char * iter = msg;
 
 	uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
@@ -355,45 +487,59 @@ void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode) {
 	sendUsb( (const uint8 *)&errorMsg, sizeof(struct ActiveEPReqErrorMsg ) );
 }
 
+#define FILL_ATTRIBUTE_MESSAGE USBF5 = ATTRIBUTE_VALUES;\
+				USBF5 = 0;	\
+				USBF5 = LO_UINT16(cluster);\
+				USBF5 = HI_UINT16(cluster);\
+				USBF5 = LO_UINT16(address->addr.shortAddr);\
+				USBF5 = HI_UINT16(address->addr.shortAddr);\
+				USBF5 = address->endPoint;\
+				USBF5 = LO_UINT16(address->panId);\
+				USBF5 = HI_UINT16(address->panId);\
+				USBF5 = tmpNumAttributes;\
+				for (i=0; i < tmpNumAttributes; i++){\
+					USBF5 = LO_UINT16(iterSend->attrID);\
+					USBF5 = HI_UINT16(iterSend->attrID);\
+					USBF5 = iterSend->status;\
+					USBF5 = iterSend->dataType;\
+					attrSize = zclGetAttrDataLength(iterSend->dataType, iterSend->data);\
+					iterData = iterSend->data;\
+					for (j=0; j < attrSize; j++){\
+						USBF5 = *iterData;\
+						iterData++;\
+					}\
+					iterSend++;\
+				}
+
 void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address ) {
+	uint8 oldEndpoint;
 	zclReadRspStatus_t * iter = readRspCmd->attrList;
 	zclReadRspStatus_t * iterSend = readRspCmd->attrList;
 	zclReadRspStatus_t * iterEnd = readRspCmd->attrList+readRspCmd->numAttr;
-	struct AttributeResponse  * attributeResponse;
 	uint16 dataSize = sizeof(struct ReadAttributeResponseMsg);
 	uint8  i;
-	uint8	 attrSize;
+	uint8  j;
+	uint8 * iterData;
+	uint8 attrSize;
 	uint8  tmpNumAttributes=0;
 	uint16 tmpDataSize=0;
+	
 	usbLogString("usbSendAttributeResponseMsg");
+	
+	HAL_DISABLE_INTERRUPTS();
+	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(5);
 	
 	for (; iter < iterEnd; iter++){
 		attrSize = zclGetAttrDataLength(iter->dataType, iter->data);
 		tmpDataSize =dataSize +attrSize+sizeof(struct AttributeResponse);
 		if (tmpDataSize > MAX_DATE_SIZE_5){
 			if (tmpNumAttributes>0){
-				struct ReadAttributeResponseMsg * response = osal_mem_alloc(dataSize);
-				if (response == NULL){
-					return;
-				}
-				response->generticDataMsg.msgCode= ATTRIBUTE_VALUES;
-				response->clusterId=cluster;
-				response->networkAddr =address->addr.shortAddr;
-				response->endpoint =address->endPoint;
-				response->panId  = address->panId;
-				response->numAttributes = tmpNumAttributes;
-				attributeResponse = response->attributes;
-				for (i=0; i < tmpNumAttributes; i++){
-					attrSize = zclGetAttrDataLength(iterSend->dataType, iterSend->data);
-					attributeResponse->attrID = iterSend->attrID;
-					attributeResponse->dataType = iterSend->dataType;
-					attributeResponse->status = iterSend->status;
-					osal_memcpy(&attributeResponse->data, iterSend->data, attrSize);
-					attributeResponse = (struct AttributeResponse *)(((uint8 *)attributeResponse) + sizeof(struct AttributeResponse) + attrSize);
-					iterSend++;
-				}
-				sendUsb((const uint8 *)response, dataSize);
-				osal_mem_free(response);
+				while (!USBFW_IN_ENDPOINT_DISARMED());
+				
+				FILL_ATTRIBUTE_MESSAGE;
+				
+				USBFW_ARM_IN_ENDPOINT();
 				tmpNumAttributes=1;
 				dataSize =  sizeof(struct ReadAttributeResponseMsg) + attrSize;
 			}
@@ -402,29 +548,14 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 			dataSize = tmpDataSize;
 		}
 	}
-	struct ReadAttributeResponseMsg * response = osal_mem_alloc(dataSize);
-	if (response == NULL){
-		return;
-	}
-	response->generticDataMsg.msgCode= ATTRIBUTE_VALUES;
-	response->clusterId=cluster;
-	response->networkAddr =address->addr.shortAddr;
-	response->endpoint =address->endPoint;
-	response->panId  = address->panId;
-	response->numAttributes = tmpNumAttributes;
-	attributeResponse = response->attributes;
-	for (i=0; i < tmpNumAttributes; i++){
-		attrSize = zclGetAttrDataLength(iterSend->dataType, iterSend->data);
-		attributeResponse->attrID = iterSend->attrID;
-		attributeResponse->dataType = iterSend->dataType;
-		attributeResponse->status = iterSend->status;
-		osal_memcpy(&attributeResponse->data, iterSend->data, attrSize);
-		attributeResponse = (struct AttributeResponse *)(((uint8 *)attributeResponse) + sizeof(struct AttributeResponse) + attrSize);
-		iterSend++;
-	}
-	sendUsb((const uint8 *)response, dataSize);
-	osal_mem_free(response);
+
+	while (!USBFW_IN_ENDPOINT_DISARMED());
 	
+	FILL_ATTRIBUTE_MESSAGE;
+
+	USBFW_ARM_IN_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(oldEndpoint);
+	HAL_ENABLE_INTERRUPTS();
 	
 	usbLogString("usbSendAttributeResponseMsg end");
 }
