@@ -216,10 +216,25 @@ void usbirqHookProcessEvents(void)
 					osal_msg_send(zusbTaskId, (uint8 *)msg);
 					break;
 				}
+			case REQ_DEVICE_INFO:{
+					uint8 addr[2];
+					addr[0] = USBF2;
+					addr[1] = USBF2;
+					uint16 nwkId = BUILD_UINT16(addr[0], addr[1]);
+					associated_devices_t * device= AssocGetWithShort( nwkId);
+					if (device == NULL){
+						usbLog(0, "device %d not found", nwkId );
+					} else {
+						usbSendDeviceInfo(device);
+					}
+				}
+				break;
 					
 			}
 			if (msg != NULL) {
-				msg->time=BUILD_UINT16(T1CNTL,T1CNTH);
+				uint8 low = T1CNTL;
+				uint8 hi = T1CNTH;
+				msg->time=BUILD_UINT16(low,hi);
 				osal_msg_send(zusbTaskId, (uint8 *)msg);
 			}
 			/*uint8 __generic *pTemp = rxData;

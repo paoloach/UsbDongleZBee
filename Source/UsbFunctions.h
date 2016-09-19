@@ -18,6 +18,7 @@
 #define MAX_DATE_SIZE_2 64
 
 #define ENDPOINT_LOG 4
+#define ENDPOINT_DATA 5
 #define USB_LOG_FIFO USBF4
 #define ENDPOINT_LOG_SIZE 64
 
@@ -33,10 +34,13 @@
 #define REQ_ALL_NODES 0x0A
 #define ALL_NODES 0x0B
 #define REQ_BIND_TABLE 0x0C
-#define BIND_TABLE 0x0D
-#define REQ_ADD_BIND_TABLE_ENTRY 0x0E
+#define BIND_TABLE					0x0D
+#define REQ_ADD_BIND_TABLE_ENTRY    0x0E
 #define REQ_REMOVE_BIND_TABLE_ENTRY 0x0F
 #define REQ_RESET				    0x10
+#define REQ_DEVICE_INFO				0x11
+#define DEVICE_INFO					0x12
+
 #define INFO_MESSAGE				0x20
 #define ENABLE_INFO_MESSAGE			0x21
 #define ATTRIBUTE_VALUE_REQ_ERROR	0x40
@@ -72,6 +76,7 @@ void usbSendAnnunce(ZDO_DeviceAnnce_t * device);
 void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc);
 void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address );
 void usbSendAttributeResponseMsgError(struct ReqAttributeMsg *, ZStatus_t status);
+void usbSendDeviceInfo(associated_devices_t * device);
 void sendUsb(const uint8 * data, uint8 len);
 void sendFifo(void);
 void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode);

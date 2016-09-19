@@ -187,7 +187,7 @@ void sendFifo(void) {
 	usbFifoHead = getUsbFifoHead();
 	if (usbFifoHead != NULL && USBFW_IN_ENDPOINT_DISARMED()){
 		uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-		USBFW_SELECT_ENDPOINT(5);
+		USBFW_SELECT_ENDPOINT(ENDPOINT_DATA);
 
 		tmpData =    usbFifoHead->data;
 		len = usbFifoHead->dataLen;
@@ -213,7 +213,7 @@ void sendUsb(const uint8 * data, uint8 len) {
 	HAL_DISABLE_INTERRUPTS();
 	if (isFifoEmpty()){
 		uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-		USBFW_SELECT_ENDPOINT(5);
+		USBFW_SELECT_ENDPOINT(ENDPOINT_DATA);
 		
 		// If the IN endpoint is ready to accept data.
 		if (len > MAX_DATE_SIZE_5){
@@ -487,6 +487,26 @@ void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode) {
 	sendUsb( (const uint8 *)&errorMsg, sizeof(struct ActiveEPReqErrorMsg ) );
 }
 
+void usbSendDeviceInfo(associated_devices_t * device){
+	uint8 oldEndpoint;
+	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(ENDPOINT_DATA);
+	while (!USBFW_IN_ENDPOINT_DISARMED());
+	
+	USBF5=DEVICE_INFO;
+	USBF5 = LO_UINT16(device->shortAddr);
+	USBF5 = HI_UINT16(device->shortAddr);
+	USBF5 = device->devStatus;
+	USBF5 = device->assocCnt;
+	USBF5 = device->age;
+	USBF5 = device->linkInfo.txCounter;
+	USBF5 = device->linkInfo.txCost;
+	USBF5 = device->linkInfo.rxLqi;
+	USBFW_ARM_IN_ENDPOINT();
+	
+	USBFW_SELECT_ENDPOINT(oldEndpoint);
+}
+
 #define FILL_ATTRIBUTE_MESSAGE USBF5 = ATTRIBUTE_VALUES;\
 				USBF5 = 0;	\
 				USBF5 = LO_UINT16(cluster);\
@@ -528,7 +548,7 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 	
 	HAL_DISABLE_INTERRUPTS();
 	oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
-	USBFW_SELECT_ENDPOINT(5);
+	USBFW_SELECT_ENDPOINT(ENDPOINT_DATA);
 	
 	for (; iter < iterEnd; iter++){
 		attrSize = zclGetAttrDataLength(iter->dataType, iter->data);
