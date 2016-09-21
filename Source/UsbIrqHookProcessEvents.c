@@ -55,6 +55,7 @@ static void attributeValue(osal_event_hdr_t *);
 static void eventSendFifo(osal_event_hdr_t *);
 static void eventReset(osal_event_hdr_t *);
 static void eventActiveEP(osal_event_hdr_t *);
+static void eventDeviceInfo(osal_event_hdr_t *);
 static void eventSendCmd(osal_event_hdr_t *);
 static void eventReqAllNodes(osal_event_hdr_t *);
 static void eventBindReq(osal_event_hdr_t *);
@@ -217,16 +218,12 @@ void usbirqHookProcessEvents(void)
 					break;
 				}
 			case REQ_DEVICE_INFO:{
-					uint8 addr[2];
-					addr[0] = USBF2;
-					addr[1] = USBF2;
-					uint16 nwkId = BUILD_UINT16(addr[0], addr[1]);
-					associated_devices_t * device= AssocGetWithShort( nwkId);
-					if (device == NULL){
-						usbLog(0, "device %d not found", nwkId );
-					} else {
-						usbSendDeviceInfo(device);
-					}
+				struct ReqDeviceInformationEvent * msgEP = (struct ReqDeviceInformationEvent *)osal_msg_allocate(sizeof(struct ReqDeviceInformationEvent) );
+				msg = &(msgEP->isr);
+				msg->isr = eventDeviceInfo;
+				msg->msg.event = EVENT_USB_ISR;
+				msgEP->data[0] = USBF2;
+				msgEP->data[1] = USBF2;
 				}
 				break;
 					
@@ -272,6 +269,17 @@ static struct UsbISR * createMsgForBind(void) {
 	}
 	msgBind->inClusterEP = USBF2;
 	return 	&(msgBind->isr);			
+}
+
+void eventDeviceInfo(osal_event_hdr_t * hdrEvent){
+	struct ReqDeviceInformationEvent * msgEP = (struct ReqDeviceInformationEvent *)hdrEvent;
+	usbLog(0, "Request device info for %X", msgEP->nwkAddr);
+	associated_devices_t * device= AssocGetWithShort( msgEP->nwkAddr);
+	if (device == NULL){
+		usbLog(0, "device %X not found", msgEP->nwkAddr );
+	} else {
+		usbSendDeviceInfo(device);
+	}	
 }
 
 void eventActiveEP(osal_event_hdr_t * hdrEvent) {

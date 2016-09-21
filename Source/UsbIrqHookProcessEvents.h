@@ -31,6 +31,14 @@ struct ReqActiveEndpointsEvent {
 	};
 };
 
+struct ReqDeviceInformationEvent {
+	struct UsbISR	isr;
+	union  {
+		uint16      nwkAddr;
+		uint8		data[2];
+	};
+};
+
 struct ReqAttributeMsg {
 	struct UsbISR	isr;
 	afAddrType_t afAddrType;

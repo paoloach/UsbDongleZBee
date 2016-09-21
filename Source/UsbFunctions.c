@@ -496,6 +496,7 @@ void usbSendDeviceInfo(associated_devices_t * device){
 	USBF5=DEVICE_INFO;
 	USBF5 = LO_UINT16(device->shortAddr);
 	USBF5 = HI_UINT16(device->shortAddr);
+	USBF5 = device->nodeRelation;
 	USBF5 = device->devStatus;
 	USBF5 = device->assocCnt;
 	USBF5 = device->age;
