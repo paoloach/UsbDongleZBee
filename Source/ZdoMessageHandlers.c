@@ -34,6 +34,7 @@ static void annunceMessage(zdoIncomingMsg_t * msg);
 static void activeEndpointResponseMessage(zdoIncomingMsg_t * msg);
 static void simpleDecriptorMessage(zdoIncomingMsg_t * msg);
 static void mgmtBindResponseMessage(zdoIncomingMsg_t * msg);
+static void ieeeAddrResponseMessage(zdoIncomingMsg_t * msg);
 
 
 ZDOMessageHandler ZDOMessageHandlerFactory(cId_t clusterId) {
@@ -51,6 +52,9 @@ ZDOMessageHandler ZDOMessageHandlerFactory(cId_t clusterId) {
 			break;
 		case Mgmt_Bind_rsp:
 			zdoMessageHandler = mgmtBindResponseMessage;
+			break;
+		case IEEE_addr_rsp:
+			zdoMessageHandler =ieeeAddrResponseMessage;
 			break;
 		default:
 			zdoMessageHandler = notHandledMessage;
@@ -90,6 +94,10 @@ static void simpleDecriptorMessage(zdoIncomingMsg_t * msg) {
 	if (simpleDesc.status == ZDP_SUCCESS){
 		usbSendSimpleDescriptor(&simpleDesc);
 	}
+}
+
+static void ieeeAddrResponseMessage(zdoIncomingMsg_t * msg) {
+	usbSendIeeeAddress(msg);
 }
 
 static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {

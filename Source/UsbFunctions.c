@@ -206,6 +206,60 @@ void sendFifo(void) {
 	HAL_ENABLE_INTERRUPTS();
 }
 
+void usbSendIeeeAddress(zdoIncomingMsg_t * inMsg){
+	byte i;
+	byte cnt = 0;
+	uint8  status;
+	if ( inMsg->asduLen > (1 + Z_EXTADDR_LEN + 2) ) {
+ 		cnt = inMsg->asdu[1 + Z_EXTADDR_LEN + 2];
+	} else {
+    	cnt = 0;
+  	}
+	uint8 * msg = inMsg->asdu;
+
+	status =  *msg++;
+	while(!USBFW_IN_ENDPOINT_DISARMED());
+	if (status == ZDO_SUCCESS){
+		// send 
+		// msg code (1 byte)
+		// ieeeAddr(8 bytes)
+ 		// nwkaddr (2 bytes)
+		// assDevices (1 bytes)
+		// startIndex (1  byte)
+		// nwkAddrss child list (2*assDevices bytes)
+		USBF5 = IEEE_ADDRESS_RESPONSE;
+		for(i=0; i < Z_EXTADDR_LEN ; i++){
+			USBF5 = *msg++;
+		}
+		// nwkAddrss
+		USBF5 = *msg++;
+		USBF5 = *msg++;
+		if (cnt > 0){
+			USBF5 = *msg++; // assDevices
+			USBF5 = *msg++; // startIndex;
+			// nwkAddress child list
+			while(cnt !=0){
+				cnt--;
+				USBF5 = *msg++; 
+				USBF5 = *msg++; 
+			}
+		} else {
+			USBF5 = 0; // assDevices
+			USBF5 = 0; // startIndex;
+		}
+	} else {
+		USBF5 = IEEE_ADDRESS_RESPONSE_ERROR;
+	}
+	uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(ENDPOINT_DATA);
+	
+	USBF5 = IEEE_ADDRESS_RESPONSE;
+	
+	
+	USBFW_ARM_IN_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(oldEndpoint);	
+}
+
 /**
 * send a chunk of data to the host at endpoint 2
 */

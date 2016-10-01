@@ -51,10 +51,21 @@ struct WriteAttributeValueUsbMsg {
 	uint8       dataValue[];
 };
 
+struct ReqIeeeAddrMsg {
+	struct UsbISR	isr;
+	union  nwkAddr {
+		uint16      nwkAddr;
+		uint8		data[2];
+	};
+	uint8		requestType;
+	uint8 		startIndex;
+};
+
 static void attributeValue(osal_event_hdr_t *);
 static void eventSendFifo(osal_event_hdr_t *);
 static void eventReset(osal_event_hdr_t *);
 static void eventActiveEP(osal_event_hdr_t *);
+static void eventReqIeeeAddr(osal_event_hdr_t *);
 static void eventDeviceInfo(osal_event_hdr_t *);
 static void eventSendCmd(osal_event_hdr_t *);
 static void eventReqAllNodes(osal_event_hdr_t *);
@@ -133,6 +144,17 @@ void usbirqHookProcessEvents(void)
 					msg = createMsgForBind();
 					msg->isr = eventUnbindRequest;
 					break;
+			case REQ_IEEE_ADDRESS:{
+					struct ReqIeeeAddrMsg * msgReq = (struct ReqIeeeAddrMsg *)osal_msg_allocate(sizeof(struct ReqIeeeAddrMsg) );
+					msg = &(msgReq->isr);
+					msg->isr = eventReqIeeeAddr;
+					msg->msg.event = EVENT_USB_ISR;
+					msgReq->data[0] = USBF2;			
+					msgReq->data[1] = USBF2;	
+					msgReq->requestType = USBF2;
+					msgReq->startIndex = USBF2;
+					break;
+					}
 			case WRITE_ATTRIBUTE_VALUE:{
 					struct WriteAttributeValueUsbMsg usbMsg;
 					uint8  * data = (uint8 *)(&usbMsg);
@@ -280,6 +302,13 @@ void eventDeviceInfo(osal_event_hdr_t * hdrEvent){
 	} else {
 		usbSendDeviceInfo(device);
 	}	
+}
+
+
+void eventReqIeeeAddr(osal_event_hdr_t * hdrEvent) {
+	struct ReqIeeeAddrMsg * msg = (struct ReqIeeeAddrMsg *)hdrEvent;
+	usbLog(0, "Request IEEE address for %X",msg->nwkAddr);
+	ZDP_IEEEAddrReq( msg->nwkAddr, msg->requestType, msg->startIndex, 0); 
 }
 
 void eventActiveEP(osal_event_hdr_t * hdrEvent) {

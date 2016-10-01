@@ -40,11 +40,15 @@
 #define REQ_RESET				    0x10
 #define REQ_DEVICE_INFO				0x11
 #define DEVICE_INFO					0x12
+#define REQ_IEEE_ADDRESS			0x13
+#define IEEE_ADDRESS_RESPONSE		0x14
+
 
 #define INFO_MESSAGE				0x20
 #define ENABLE_INFO_MESSAGE			0x21
 #define ATTRIBUTE_VALUE_REQ_ERROR	0x40
 #define ACTIVE_EP_REQ_ERROR			0x41
+#define IEEE_ADDRESS_RESPONSE_ERROR 0x42
 
 
 
@@ -85,5 +89,7 @@ void usbLogString(const char * msg);
 char * clusterRequestToString(uint16 clusterId);
 char * convertUint16ToHex(uint16 num);
 void requestAllDevices2(uint8 * notUsed);
+void usbSendIeeeAddress(zdoIncomingMsg_t * msg);
+
 
 #endif

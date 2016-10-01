@@ -740,9 +740,9 @@ afStatus_t AF_DataRequest( afAddrType_t *dstAddr, endPointDesc_t *srcEP,
     }
     else
     {
-	usbLog(0, "APSDE_DataReq to %X:%x  cluster: %s len: %d", req.dstAddr.addr.shortAddr, req.dstEP, clusterRequestToString(req.clusterID),req.asduLen); 
+	  usbLog(0, "APSDE_DataReq to %X:%x  cluster: %s len: %d", req.dstAddr.addr.shortAddr, req.dstEP, clusterRequestToString(req.clusterID),req.asduLen); 
       stat = APSDE_DataReq( &req );
-    usbLog(0, "APSDE_DataReq sent");
+      usbLog(0, "APSDE_DataReq sent");
 	}
   }
 
