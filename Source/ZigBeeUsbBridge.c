@@ -39,8 +39,6 @@
 #include "hal_uart.h"
 #include "stdio.h"
 #include "endpointRequestList.h"
-#include "DeviceManager.h"
-
 
 #define DEVICE_VERSION     0
 #define FLAGS              0
@@ -108,8 +106,6 @@ SimpleDescriptionFormat_t simpleDesc = {
 void zusbAppInit( byte task_id ){
 	zusbTaskId = task_id;
   
-	deviceManagerInit();
- 
 	endpointRequestTaskId(zusbTaskId);
 	zclHA_Init( &simpleDesc );
   	// Register the Application to receive the unprocessed Foundation command/response messages
@@ -178,18 +174,6 @@ UINT16 zusbProcessEvent( byte task_id, UINT16 events ){
 		goto end;
 	}
 
-	if (events & USB_ANNUNCE_MSG){
-		requestAllDevices();
-		result =  (events ^ USB_ANNUNCE_MSG);
-		goto end;
-	}
-	
-	if (events & USB_ANNUNCE2_MSG){
-		requestAllDevices2(NULL);
-		result =  (events ^ USB_ANNUNCE2_MSG);
-		goto end;
-	}
-	
 	if (events & MEM_INFO){
 		prindDebugInfo();
 		osal_start_timerEx( zusbTaskId, MEM_INFO, 10000 );

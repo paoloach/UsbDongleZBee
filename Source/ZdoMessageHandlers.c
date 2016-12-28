@@ -12,7 +12,6 @@
 #include "hal_board.h"
 #include "hal_types.h"
 #include "endpointRequestList.h"
-#include "DeviceManager.h"
 
 /*********************************************************************
  * LOCAL VARIABLES
@@ -70,13 +69,10 @@ static void notHandledMessage(zdoIncomingMsg_t * msg) {
 
 static void annunceMessage(zdoIncomingMsg_t * msg) {
 	usbLog(0,"handling annunce message");
-	
 	ZDO_ParseDeviceAnnce( msg, &device );
-	addDevice(&device);
 	usbSendAnnunce(&device);
 
 }
-
 
 static void activeEndpointResponseMessage(zdoIncomingMsg_t * msg) {
 	usbLog(0,"handling active EP rsp");
@@ -101,7 +97,6 @@ static void ieeeAddrResponseMessage(zdoIncomingMsg_t * msg) {
 }
 
 static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
-	uint8 valid;
 	struct BindTableResponseEntry *list;
 	
 	usbLog(0,"handling Mgmt bind rsp");
@@ -128,33 +123,25 @@ static void mgmtBindResponseMessage(zdoIncomingMsg_t * inMsg) {
 	list = bindTableResponse->list;
 	dataSize=sizeof(struct BindTableResponse );
 	for (i=0; i< len; i++){
-		valid=1;
-		if (deviceNwkAddrLookup(msg, &list->srcAddr)==FALSE){
-			valid=0;
-		}	
 		msg += Z_EXTADDR_LEN;
 		list->srcEP = *msg++;
 		list->clusterID = BUILD_UINT16( msg[0], msg[1] );
 		msg += 2;
 		if (*msg++ == Addr64Bit){
-			if (deviceNwkAddrLookup(msg, &list->dstAddr)==FALSE){
-				valid=0;
-			}
 			msg += Z_EXTADDR_LEN;
 		} else {
 			list->dstAddr = BUILD_UINT16( msg[0], msg[1] );
 			msg += 2;
 		}
 		list->dstEP = *msg++;
-		if (valid){
-			bindTableResponse->elementSize++;
-			list++;
-			dataSize += sizeof(struct BindTableResponseEntry );
-			if (dataSize + sizeof(struct BindTableResponseEntry) > MAX_DATE_SIZE_5){
-				sendUsb((uint8 *)bindTableResponse, dataSize);
-				dataSize =sizeof(struct BindTableResponse );
-				list = bindTableResponse->list;
-			}
+		bindTableResponse->elementSize++;
+		list++;
+		dataSize += sizeof(struct BindTableResponseEntry );
+		if (dataSize + sizeof(struct BindTableResponseEntry) > MAX_DATE_SIZE_5){
+			sendUsb((uint8 *)bindTableResponse, dataSize);
+			bindTableResponse->elementSize=0;
+			dataSize =sizeof(struct BindTableResponse );
+			list = bindTableResponse->list;
 		}
 	}
 	sendUsb((uint8 *)bindTableResponse, dataSize);

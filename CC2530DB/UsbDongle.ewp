@@ -1118,12 +1118,6 @@
     <group>
       <name>usb</name>
       <file>
-        <name>$PROJ_DIR$\..\Source\DeviceManager.c</name>
-      </file>
-      <file>
-        <name>$PROJ_DIR$\..\Source\DeviceManager.h</name>
-      </file>
-      <file>
         <name>$PROJ_DIR$\..\Source\endpointRequestList.c</name>
       </file>
       <file>

@@ -75,7 +75,6 @@ typedef void (*UsbMessageHandler)(uint8 * data);
 void Usb_ProcessLoop(void);
 void handleUsbOut(void);
 UsbMessageHandler parseDataOut(void);
-void requestAllDevices(void);
 void usbSendAnnunce(ZDO_DeviceAnnce_t * device);
 void usbSendSimpleDescriptor(ZDO_SimpleDescRsp_t * simpleDesc);
 void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, afAddrType_t * address );
@@ -88,7 +87,6 @@ void usbLog(uint16 nwkId, const char * msg,...);
 void usbLogString(const char * msg);
 char * clusterRequestToString(uint16 clusterId);
 char * convertUint16ToHex(uint16 num);
-void requestAllDevices2(uint8 * notUsed);
 void usbSendIeeeAddress(zdoIncomingMsg_t * msg);
 
 

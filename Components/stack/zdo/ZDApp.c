@@ -1104,11 +1104,12 @@ void ZDApp_ProcessOSALMsg( osal_event_hdr_t *msgPtr ){
 		// This message is received as a confirmation of a data packet sent.
 		// The status is of ZStatus_t type [defined in NLMEDE.h]
 		// The message fields are defined in AF.h
-		usbLog(0, "incoming AF data confirm msg");
+		
 		afDataConfirm = (afDataConfirm_t *)msgPtr;
 		sentEP = afDataConfirm->endpoint;
 		sentStatus = afDataConfirm->hdr.status;
-
+		usbLog(0, "incoming AF data confirm msg");
+		usbLog(0, "from endpoint %d, with status %d",(int)sentEP, (int)sentStatus);
 		// Action taken when confirmation is received.
 		#if defined ( ZIGBEE_FREQ_AGILITY )
 			if ( pZDNwkMgr_ProcessDataConfirm )

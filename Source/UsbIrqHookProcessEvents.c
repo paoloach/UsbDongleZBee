@@ -68,7 +68,6 @@ static void eventActiveEP(osal_event_hdr_t *);
 static void eventReqIeeeAddr(osal_event_hdr_t *);
 static void eventDeviceInfo(osal_event_hdr_t *);
 static void eventSendCmd(osal_event_hdr_t *);
-static void eventReqAllNodes(osal_event_hdr_t *);
 static void eventBindReq(osal_event_hdr_t *);
 static void eventWriteValue(osal_event_hdr_t *);
 static void eventBindRequest(osal_event_hdr_t *);
@@ -109,12 +108,6 @@ void usbirqHookProcessEvents(void)
 					msg->msg.event = EVENT_USB_ISR;
 					msg->isr = eventReset;
 					break;
-			case REQ_ALL_NODES:
-					msg = (struct UsbISR *)osal_msg_allocate(sizeof(struct UsbISR) );
-					msg->msg.event = EVENT_USB_ISR;
-					msg->isr = eventReqAllNodes;
-					break;
-
 			case REQ_BIND_TABLE: {
 					uint8 addr[2];
 					addr[0] = USBF2;
@@ -314,7 +307,7 @@ void eventReqIeeeAddr(osal_event_hdr_t * hdrEvent) {
 void eventActiveEP(osal_event_hdr_t * hdrEvent) {
 	zAddrType_t destAddr;
 	struct ReqActiveEndpointsEvent * msgEP = (struct ReqActiveEndpointsEvent *)hdrEvent;
-	usbLog(0, "%u, Request active endpoint for %X",msgEP->isr.time, msgEP->nwkAddr);
+	usbLog(0, "Request active endpoint for %X", msgEP->nwkAddr);
 
 	destAddr.addrMode = Addr16Bit;
 	destAddr.addr.shortAddr = msgEP->nwkAddr;
@@ -345,17 +338,11 @@ void eventReset(osal_event_hdr_t * hdrEvent) {
 	SystemReset();
 }
 
-void eventReqAllNodes(osal_event_hdr_t * msg) {
-	usbLog(0, "%u: Request all nodes",((struct UsbISR *)msg)->time);
-	currentDeviceElement=0;
-	requestAllDevices();
-}
-
 void eventBindReq(osal_event_hdr_t * hdrEvent) {
 	uint8 first=0;
 	struct BindTableRequestMsg * msg = (struct BindTableRequestMsg *)hdrEvent;
 	
-	usbLog(0,"%u, Request bind table for %X",msg->isr.time, msg->afAddrType.addr.shortAddr);
+	//usbLog(0,"Request bind table for %X", msg->afAddrType.addr.shortAddr);
 
 	ZDP_MgmtBindReq( &(msg->afAddrType),first, 0 );
 }

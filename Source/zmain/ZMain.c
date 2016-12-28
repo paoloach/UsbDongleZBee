@@ -92,7 +92,7 @@ int main( void )
 	AddrMgrEntryUpdate( &addrEntry );*/
   
   // Turn off interrupts
-  osal_int_disable( INTS_ALL );
+  ShowAttributeosal_int_disable( INTS_ALL );
 
   // Initialization for board related stuff such as LEDs
   HAL_BOARD_INIT();

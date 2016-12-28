@@ -364,7 +364,8 @@ void afIncomingData( aps_FrameFormat_t *aff, zAddrType_t *SrcAddress, uint16 Src
  	  uint8 grpEp = APS_GROUPS_EP_NOT_FOUND;
 	#endif
  
-	//usbLog(0, "Received APS: frame control %X, destEP: %X, clusterId: %X, srcEP: %X",  aff->FrmCtrl, aff->DstEndPoint, aff->ClusterID, aff->SrcEndPoint);
+	usbLog(0, "Received APS:");
+	usbLog(0, "destEP: %X, clusterId: %s, srcEP: %X", aff->DstEndPoint, clusterRequestToString(aff->ClusterID), (int)aff->SrcEndPoint);
 	switch(SrcAddress->addrMode){
 	case Addr16Bit:
 		//usbLog(0, "Received APS from %X srcEP:%X dstEP:%X, cluster:%X", SrcAddress->addr.shortAddr,aff->SrcEndPoint,aff->DstEndPoint,aff->ClusterID);
@@ -559,6 +560,46 @@ afStatus_t AF_DataRequest( afAddrType_t *dstAddr, endPointDesc_t *srcEP,
   epList_t *pList;
   
   usbLog(0,"AF_DataRequest: dstAddr=%X, EP=%x", dstAddr->addr.shortAddr, dstAddr->endPoint);
+  {
+	  switch(len){
+	  case 0:
+		  usbLog(0, "0 bytes");
+		  break;
+	  case 1:
+		  usbLog(0, "%x", buf[0]);
+		  break;
+	  case 2:
+		  usbLog(0, "%x %x", buf[0],buf[1]);
+		  break;
+	  case 3:
+		  usbLog(0, "%x %x %x", buf[0],buf[1],buf[2]);
+		  break;	  
+	  case 4:
+		  usbLog(0, "%x %x %x %x", buf[0],buf[1],buf[2],buf[3]);
+		  break;
+	  case 5:
+		  usbLog(0, "%x %x %x %x %x", buf[0],buf[1],buf[2],buf[3],buf[4]);
+		  break;
+	  case 6:
+		  usbLog(0, "%x %x %x %x %x %x", buf[0],buf[1],buf[2],buf[3],buf[4],buf[5]);
+		  break;
+	  case 7:
+		  usbLog(0, "%x %x %x %x %x %x %x", buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6]);
+		  break;
+	  case 8:
+		  usbLog(0, "%x %x %x %x %x %x %x %x", buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7]);
+		  break;
+	  case 9:
+		  usbLog(0, "%x %x %x %x %x %x %x %x %x", buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7],buf[8]);
+		  break;
+	  default:
+		  usbLog(0, "%x %x %x %x %x %x %x %x %x %x", buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7],buf[8],buf[9]);
+		  break;		  
+	  
+	  
+	  
+	  }
+  }
 
   // Verify source end point
   if ( srcEP == NULL )
@@ -742,7 +783,6 @@ afStatus_t AF_DataRequest( afAddrType_t *dstAddr, endPointDesc_t *srcEP,
     {
 	  usbLog(0, "APSDE_DataReq to %X:%x  cluster: %s len: %d", req.dstAddr.addr.shortAddr, req.dstEP, clusterRequestToString(req.clusterID),req.asduLen); 
       stat = APSDE_DataReq( &req );
-      usbLog(0, "APSDE_DataReq sent");
 	}
   }
 

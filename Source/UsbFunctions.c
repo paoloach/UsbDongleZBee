@@ -25,7 +25,6 @@
 #include "hal_usbdongle_cfg.h"
 #include "TimerEvents.h"
 #include "UsbFifoData.h"
-#include "DeviceManager.h"
 #include "OSAL_Memory.h"
  
 
@@ -635,64 +634,6 @@ void usbSendAttributeResponseMsg(zclReadRspCmd_t * readRspCmd, uint16 cluster, a
 	usbLogString("usbSendAttributeResponseMsg end");
 }
 
-void requestAllDevices2(uint8 * notUsed){
-	if (currentDeviceElement < DEVICE_MANAGER_TABLE_SIZE){
-		while(currentDeviceElement < DEVICE_MANAGER_TABLE_SIZE){
-			ZDO_DeviceAnnce_t * device = deviceEntryGet(currentDeviceElement);
-			if (device != NULL){
-				usbLog(0,"Find device %X from device Entry",device->nwkAddr );
-				annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
-				annunceDataMsg.nwkAddr = device->nwkAddr;
-				sAddrExtCmp(annunceDataMsg.extAddr, device->extAddr);
-				annunceDataMsg.capabilities = device->capabilities;
-				sendUsb((uint8 *)&annunceDataMsg, sizeof(annunceDataMsg));
-				osal_start_timerEx( zusbTaskId, USB_ANNUNCE2_MSG, ANNUNCE_SEND_TIMEOUT );
-				currentDeviceElement++;
-				return;
-			}
-			currentDeviceElement++;
-		}
-	} else {
-		osal_stop_timerEx(zusbTaskId, USB_ANNUNCE2_MSG);
-		currentDeviceElement =0;
-	}
-}
-
-void requestAllDevices(void){
-	usbLog(0,"Request all devices");
-	if (currentDeviceElement < NWK_MAX_ADDRESSES){
-		while(1){
-			AddrMgrEntry_t addrMgrEntry; 
-			addrMgrEntry.index=currentDeviceElement;
-			addrMgrEntry.user=ADDRMGR_USER_DEFAULT;
-			
-			if (AddrMgrEntryGet(&addrMgrEntry)==TRUE && addrMgrEntry.nwkAddr != 0xFFFF){
-				usbLog(0, "find device %X into addrMgr", addrMgrEntry.nwkAddr);
-				annunceDataMsg.genericDataMsg.msgCode = ANNUNCE;
-				annunceDataMsg.nwkAddr = addrMgrEntry.nwkAddr;
-				osal_memcpy(annunceDataMsg.extAddr, addrMgrEntry.extAddr, Z_EXTADDR_LEN);
-				annunceDataMsg.capabilities = 0;
-				sendUsb((uint8 *)&annunceDataMsg, sizeof(annunceDataMsg));
-				osal_start_timerEx( zusbTaskId, USB_ANNUNCE_MSG, ANNUNCE_SEND_TIMEOUT );
-				currentDeviceElement++;
-				return;
-			} else{
-				if (currentDeviceElement >=NWK_MAX_ADDRESSES){
-					currentDeviceElement=0;
-					osal_start_timerEx( zusbTaskId, USB_ANNUNCE2_MSG, ANNUNCE_SEND_TIMEOUT );
-					return;
-				}
-			}
-			currentDeviceElement++;
-		}
-	} else {
-		osal_stop_timerEx(zusbTaskId, USB_ANNUNCE_MSG);
-		currentDeviceElement =0;
-	}
-}
-
-
-
 char * clusterRequestToString(uint16 clusterId){
 	switch(clusterId){
 	case NWK_addr_req:
@@ -722,6 +663,8 @@ char * clusterRequestToString(uint16 clusterId){
 		return "Simple_Desc_rsp";
 	case End_Device_Timeout_rsp:
 		return "End_Device_Timeout_rsp";
+	case Active_EP_rsp:
+		return "Active EP rsp";
 	case Bind_rsp:
 		return "Bind_rsp";
 	case End_Device_Bind_rsp:
