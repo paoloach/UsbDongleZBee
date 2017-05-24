@@ -118,6 +118,7 @@ void zusbAppInit( byte task_id ){
 	ZDO_RegisterForZDOMsg( zusbTaskId, Active_EP_rsp);
 	ZDO_RegisterForZDOMsg( zusbTaskId, Simple_Desc_rsp);
 	ZDO_RegisterForZDOMsg( zusbTaskId, IEEE_addr_rsp);
+	ZDO_RegisterForZDOMsg( zusbTaskId, Power_Desc_rsp);
 	
 	T1CTL=1;
 	

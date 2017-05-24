@@ -55,6 +55,9 @@ ZDOMessageHandler ZDOMessageHandlerFactory(cId_t clusterId) {
 		case IEEE_addr_rsp:
 			zdoMessageHandler =ieeeAddrResponseMessage;
 			break;
+		case Power_Desc_rsp:
+			zdoMessageHandler =usbSendPowerNode;
+			break;	
 		default:
 			zdoMessageHandler = notHandledMessage;
 	}

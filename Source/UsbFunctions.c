@@ -205,6 +205,42 @@ void sendFifo(void) {
 	HAL_ENABLE_INTERRUPTS();
 }
 
+void usbSendPowerNode(zdoIncomingMsg_t * inMsg){
+	uint8 *msg;
+	uint8 status;
+	
+	msg = inMsg->asdu;
+	while(!USBFW_IN_ENDPOINT_DISARMED());
+	status = *msg++;
+	if (status == ZDP_SUCCESS){
+		// send
+		// msg code (1 byte)
+ 		// nwkaddr (2 bytes)
+		// powerMode (1 byte)
+		// availablePowerSource (1 byte)
+		// currentPowerSource (1 byte)
+		// powerLevel (1 byte)
+		USBF5 = NODE_POWER_RESPONSE;
+		USBF5 = *msg++;
+		USBF5 = *msg++;
+		USBF5 = *msg >> 4;
+		USBF5 = *msg++ & 0x0F;
+		USBF5 = *msg >> 4;
+		USBF5 = *msg++ & 0x0F;
+	} else {
+		USBF5 = POWER_NODE_REQ_ERROR;
+		USBF5 = *msg++;
+		USBF5 = *msg++;
+		USBF5 = status;
+	}
+	
+	uint8 oldEndpoint = USBFW_GET_SELECTED_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(ENDPOINT_DATA);
+	USBFW_ARM_IN_ENDPOINT();
+	USBFW_SELECT_ENDPOINT(oldEndpoint);	
+}
+
+
 void usbSendIeeeAddress(zdoIncomingMsg_t * inMsg){
 	byte i;
 	byte cnt = 0;
@@ -535,6 +571,14 @@ void usbSendAttributeResponseMsgError(struct ReqAttributeMsg * attributesValue, 
 void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode) {
 	struct ActiveEPReqErrorMsg  errorMsg;
 	errorMsg.generticDataMsg.msgCode = ACTIVE_EP_REQ_ERROR;
+	errorMsg.networkAddr = nwkAddr;
+	errorMsg.errorCode = errorCode;
+	sendUsb( (const uint8 *)&errorMsg, sizeof(struct ActiveEPReqErrorMsg ) );
+}
+
+void usbSendPowerNodeError(uint16 nwkAddr, uint8 errorCode) {
+	struct ActiveEPReqErrorMsg  errorMsg;
+	errorMsg.generticDataMsg.msgCode = POWER_NODE_REQ_ERROR;
 	errorMsg.networkAddr = nwkAddr;
 	errorMsg.errorCode = errorCode;
 	sendUsb( (const uint8 *)&errorMsg, sizeof(struct ActiveEPReqErrorMsg ) );

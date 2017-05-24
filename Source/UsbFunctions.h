@@ -42,6 +42,8 @@
 #define DEVICE_INFO					0x12
 #define REQ_IEEE_ADDRESS			0x13
 #define IEEE_ADDRESS_RESPONSE		0x14
+#define NODE_POWER_REQUEST			0x15
+#define NODE_POWER_RESPONSE			0x16
 
 
 #define INFO_MESSAGE				0x20
@@ -49,7 +51,7 @@
 #define ATTRIBUTE_VALUE_REQ_ERROR	0x40
 #define ACTIVE_EP_REQ_ERROR			0x41
 #define IEEE_ADDRESS_RESPONSE_ERROR 0x42
-
+#define POWER_NODE_REQ_ERROR		0x43
 
 
 struct GenericDataMsg{
@@ -83,11 +85,13 @@ void usbSendDeviceInfo(associated_devices_t * device);
 void sendUsb(const uint8 * data, uint8 len);
 void sendFifo(void);
 void usbSendActiveEPError(uint16 nwkAddr, uint8 errorCode);
+void usbSendPowerNodeError(uint16 nwkAddr, uint8 errorCode);
 void usbLog(uint16 nwkId, const char * msg,...);
 void usbLogString(const char * msg);
 char * clusterRequestToString(uint16 clusterId);
 char * convertUint16ToHex(uint16 num);
 void usbSendIeeeAddress(zdoIncomingMsg_t * msg);
+void usbSendPowerNode(zdoIncomingMsg_t * msg);
 
 
 #endif

@@ -9,7 +9,7 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DebugChecksum]
-Checksum=-1032315903
+Checksum=928276085
 [CallStack]
 ShowArgs=0
 [Disassembly]
@@ -82,6 +82,9 @@ Category=_ 0
 [TermIOLog]
 LoggingEnabled=_ 0
 LogFile=_ ""
+[SfrWindow]
+Show=1 1
+Sort=4 0
 [Breakpoints]
 Bp0=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.453.2" 0 0 0 0 "" 0 ""
 Bp1=_ "STD_CODE" "{$PROJ_DIR$\..\Components\hal\common\hal_assert.c}.121.1" 0 0 0 0 "" 0 ""
@@ -92,7 +95,7 @@ Bp5=_ "STD_CODE" "{$PROJ_DIR$\..\Source\UsbFunctions.c}.267.6" 0 0 0 0 "" 0 ""
 Bp6=_ "STD_CODE" "{$PROJ_DIR$\..\Source\ZdoMessageHandlers.c}.56.4" 0 0 0 0 "" 0 ""
 Count=7
 [ChipconEmu]
-Stop timers on halt=1
+Stop timers on halt=0
 Leave target running=1
 [Aliases]
 Count=0

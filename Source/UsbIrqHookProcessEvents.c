@@ -53,12 +53,20 @@ struct WriteAttributeValueUsbMsg {
 
 struct ReqIeeeAddrMsg {
 	struct UsbISR	isr;
-	union  nwkAddr {
+	union  addr {
 		uint16      nwkAddr;
 		uint8		data[2];
 	};
 	uint8		requestType;
 	uint8 		startIndex;
+};
+
+struct ReqPowerNodeMsg {
+	struct UsbISR	isr;
+	union  nwkAddr {
+		uint16      nwkAddr;
+		uint8		data[2];
+	};
 };
 
 static void attributeValue(osal_event_hdr_t *);
@@ -72,6 +80,7 @@ static void eventBindReq(osal_event_hdr_t *);
 static void eventWriteValue(osal_event_hdr_t *);
 static void eventBindRequest(osal_event_hdr_t *);
 static void eventUnbindRequest(osal_event_hdr_t *);
+static void eventReqPowerNode(osal_event_hdr_t * );
 static struct UsbISR * createMsgForBind(void);
 
 // ************************ USB interrupt event processing *************************
@@ -136,6 +145,15 @@ void usbirqHookProcessEvents(void)
 			case REQ_REMOVE_BIND_TABLE_ENTRY:
 					msg = createMsgForBind();
 					msg->isr = eventUnbindRequest;
+					break;
+			case NODE_POWER_REQUEST:{
+					struct ReqPowerNodeMsg * msgReq =(struct ReqPowerNodeMsg *)osal_msg_allocate(sizeof(struct ReqPowerNodeMsg) );
+					msg = &(msgReq->isr);
+					msg->isr = eventReqPowerNode;
+					msg->msg.event = EVENT_USB_ISR;
+					msgReq->data[0] = USBF2;			
+					msgReq->data[1] = USBF2;	
+					}
 					break;
 			case REQ_IEEE_ADDRESS:{
 					struct ReqIeeeAddrMsg * msgReq = (struct ReqIeeeAddrMsg *)osal_msg_allocate(sizeof(struct ReqIeeeAddrMsg) );
@@ -302,6 +320,20 @@ void eventReqIeeeAddr(osal_event_hdr_t * hdrEvent) {
 	struct ReqIeeeAddrMsg * msg = (struct ReqIeeeAddrMsg *)hdrEvent;
 	usbLog(0, "Request IEEE address for %X",msg->nwkAddr);
 	ZDP_IEEEAddrReq( msg->nwkAddr, msg->requestType, msg->startIndex, 0); 
+}
+
+void eventReqPowerNode(osal_event_hdr_t * hdrEvent) {
+	zAddrType_t destAddr;
+	struct ReqIeeeAddrMsg * msg = (struct ReqIeeeAddrMsg *)hdrEvent;
+	usbLog(0, "Request PowerNode for %X",msg->nwkAddr);
+	
+	destAddr.addrMode = Addr16Bit;
+	destAddr.addr.shortAddr = msg->nwkAddr;
+	
+	afStatus_t ret = ZDP_NWKAddrOfInterestReq(&destAddr,msg->nwkAddr, Power_Desc_req, 0);
+	if (ret != ZSuccess){
+		usbSendPowerNodeError(msg->nwkAddr, ret);
+	}
 }
 
 void eventActiveEP(osal_event_hdr_t * hdrEvent) {
